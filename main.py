@@ -23,45 +23,64 @@ def wyczyscZdjecia():
             nieusuniete += 1
     print(f'Usunięto {pomyslnieusuniete}, nie udało się usunąć {nieusuniete}')
 
-def ekstracjaKlatek(sciezka, docelowy_fps):
+def ekstracjaKlatek(sciezka, docelowa_liczba_klatek):
     print(f'Otwieranie filmu: {sciezka}')
     film = cv.VideoCapture(sciezka)
-    fps = math.ceil(film.get(cv.CAP_PROP_FPS))
-    interwal = int(fps / docelowy_fps)
-    if interwal < 1:
-        interwal = 1
-    print(f'Film w {fps} fps, ekstrakcja co {interwal} klatki')
+    
+    # Pobierz całkowitą liczbę klatek w filmie
+    calkowita_liczba_klatek = int(film.get(cv.CAP_PROP_FRAME_COUNT))
+    fps = film.get(cv.CAP_PROP_FPS)
+    
+    # Oblicz interwał co ile klatek zapisywać
+    if docelowa_liczba_klatek >= calkowita_liczba_klatek:
+        interwal = 1  # Zapisz wszystkie klatki
+    else:
+        interwal = max(1, calkowita_liczba_klatek // docelowa_liczba_klatek)
+    
+    print(f'Film ma {calkowita_liczba_klatek} klatek, ekstrakcja co {interwal} klatki')
+    print(f'Docelowa liczba klatek: {docelowa_liczba_klatek}')
+    
     i = 0
     klatki = 0
+    zapisane_klatki = 0
     os.makedirs('./zdjecia', exist_ok=True)
     wyczyscZdjecia()
+    
     while(film.isOpened()):
         flag, klatka = film.read()
 
         if flag == False:
             break
 
-        if klatki % interwal == 0:  
+        if klatki % interwal == 0 and zapisane_klatki < docelowa_liczba_klatek:  
             cv.imwrite(f'./zdjecia/img_{i}.jpg', klatka)
             print(f'Zapisano ./zdjecia/img_{i}.jpg')
             i += 1
+            zapisane_klatki += 1
+            
         klatki += 1
+        
+        # Przerwij jeśli osiągnięto docelową liczbę klatek
+        if zapisane_klatki >= docelowa_liczba_klatek:
+            break
+            
     film.release()
-    return i
+    return zapisane_klatki
+
 
 class ExtractionThread(QThread):
     progres = pyqtSignal(int)
     koniec = pyqtSignal(int)
     err = pyqtSignal(str)
 
-    def __init__(self, sciezka, docelowy_fps):
+    def __init__(self, sciezka, docelowa_liczba_klatek):
         super().__init__()
         self.sciezka = sciezka
-        self.docelowy_fps = docelowy_fps
+        self.docelowa_liczba_klatek = docelowa_liczba_klatek
 
     def run(self):
         try:
-            wyekstraktowane_klatki = ekstracjaKlatek(self.sciezka, self.docelowy_fps)
+            wyekstraktowane_klatki = ekstracjaKlatek(self.sciezka, self.docelowa_liczba_klatek)
             self.koniec.emit(wyekstraktowane_klatki)
         except Exception as e:
             self.err.emit(str(e))
@@ -96,16 +115,20 @@ class MainWindow(QMainWindow):
         film_layout.addWidget(self.przegladaj_przycisk)
         main_layout.addLayout(film_layout)
 
-        # FPS 
-        fps_layout = QHBoxLayout()
-        self.fps_label = QLabel('Docelowe FPS:')
-        self.fps_input = QLineEdit()
-        self.fps_input.setText('15')  # Domyślna wartość
-        self.fps_input.setPlaceholderText('Wprowadź docelowe FPS')
+        # Liczba klatek
+        klatki_layout = QHBoxLayout()
+        self.klatki_label = QLabel('Docelowa liczba klatek:')
+        self.klatki_input = QLineEdit()
+        self.klatki_input.setText('100')  # Domyślna wartość
+        self.klatki_input.setPlaceholderText('Wprowadź docelową liczbę klatek')
 
-        fps_layout.addWidget(self.fps_label)
-        fps_layout.addWidget(self.fps_input)
-        main_layout.addLayout(fps_layout)
+        self.calkowite_klatki_label = QLabel('Całkowita liczba klatek: -')
+        self.calkowite_klatki_label.setStyleSheet("color: gray; font-style: italic;")
+
+        klatki_layout.addWidget(self.klatki_label)
+        klatki_layout.addWidget(self.klatki_input)
+        klatki_layout.addWidget(self.calkowite_klatki_label)
+        main_layout.addLayout(klatki_layout)
 
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -131,10 +154,32 @@ class MainWindow(QMainWindow):
         )
         if film_sciezka:
             self.film_sciezka.setText(film_sciezka)
+            self.aktualizuj_info_klatek(film_sciezka)
+
+    def aktualizuj_info_klatek(self, sciezka):
+        film = cv.VideoCapture(sciezka)
+        if film.isOpened():
+            calkowita_liczba_klatek = int(film.get(cv.CAP_PROP_FRAME_COUNT))
+            fps = film.get(cv.CAP_PROP_FPS)
+            film.release()
+            
+            if fps > 0:
+                duration = calkowita_liczba_klatek / fps
+                minutes = int(duration // 60)
+                seconds = int(duration % 60)
+                czas_info = f" ({minutes:02d}:{seconds:02d})"
+            else:
+                czas_info = ""
+                
+            self.calkowite_klatki_label.setText(f"Całkowita liczba klatek: {calkowita_liczba_klatek}{czas_info}")
+            self.calkowite_klatki_label.setStyleSheet("color: white; font-style: normal;")
+        else:
+            self.calkowite_klatki_label.setText("Całkowita liczba klatek: Błąd odczytu")
+            self.calkowite_klatki_label.setStyleSheet("color: red; font-style: italic;")
 
     def start_extract(self):
         sciezka_filmu = self.film_sciezka.text()
-        fps_text = self.fps_input.text()
+        klatki_text = self.klatki_input.text()
 
         # Walidacja
         if not sciezka_filmu:
@@ -146,11 +191,11 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            docelowy_fps = int(fps_text)
-            if docelowy_fps <= 0:
-                raise ValueError("FPS musi być dodatnie")
+            docelowa_liczba_klatek = int(klatki_text)
+            if docelowa_liczba_klatek <= 0:
+                raise ValueError("Liczba klatek musi być dodatnia")
         except ValueError:
-            QMessageBox.warning(self, 'Błąd', 'Proszę wprowadzić poprawną wartość FPS!')
+            QMessageBox.warning(self, 'Błąd', 'Proszę wprowadzić poprawną liczbę klatek!')
             return
 
         # Wyłącz UI podczas ekstrakcji
@@ -160,7 +205,7 @@ class MainWindow(QMainWindow):
         self.status_label.setText('Ekstrakcja w toku...')
 
         # Rozpocznij ekstrakcję w osobnym wątku
-        self.extraction_thread = ExtractionThread(sciezka_filmu, docelowy_fps)
+        self.extraction_thread = ExtractionThread(sciezka_filmu, docelowa_liczba_klatek)
         self.extraction_thread.koniec.connect(self.ekstrakcja_zakonczona)
         self.extraction_thread.err.connect(self.ekstrakcja_bledu)
         self.extraction_thread.start()
@@ -171,7 +216,7 @@ class MainWindow(QMainWindow):
         self.przegladaj_przycisk.setEnabled(True)
         self.progress_bar.setVisible(False)
         
-        self.status_label.setText(f'Ekstrakcja zakończona! Zapisanio {liczba_klatek} klatek.')
+        self.status_label.setText(f'Ekstrakcja zakończona! Zapisano {liczba_klatek} klatek.')
         QMessageBox.information(self, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./zdjecia/')
 
     def ekstrakcja_bledu(self, komunikat_bledu):

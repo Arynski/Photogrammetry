@@ -1,7 +1,10 @@
 import pycolmap
 from pathlib import Path
+import open3d as o3d
+import numpy as np
+import matplotlib as plt
 
-n_watkow = 2 # Ile wątków
+n_watkow = 4 # Ile wątków
 uzywacGPU = False # Czy robic z GPU
 
 # Ścieżki
@@ -14,6 +17,7 @@ undistort_dir = Path("./undistort")
 output_dir.mkdir(exist_ok=True)
 reco_dir.mkdir(exist_ok=True)
 undistort_dir = Path(exists_ok=True)
+
 
 # Ekstrakcja ficzerów
 pycolmap.extract_features(
