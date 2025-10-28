@@ -206,6 +206,8 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-zdjecia/
-*.mp4
+zdjecia2/
 output/
+dependencies/*
+!dependencies/README
+run.sh

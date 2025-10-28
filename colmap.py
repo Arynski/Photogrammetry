@@ -7,9 +7,13 @@ uzywacGPU = False # Czy robic z GPU
 # Ścieżki
 zdjecia_dir = Path("./zdjecia")
 output_dir = Path("./output")
+reco_dir = Path("./output/reconstructions")
+undistort_dir = Path("./undistort")
 
 # Tworzenie output jeżeli go nima
 output_dir.mkdir(exist_ok=True)
+reco_dir.mkdir(exist_ok=True)
+undistort_dir = Path(exists_ok=True)
 
 # Ekstrakcja ficzerów
 pycolmap.extract_features(
@@ -34,24 +38,59 @@ pycolmap.match_sequential(
 # Rekonstrukcja
 def wlacz_rekonstrukcje(zdjecia_dir, output_dir):
   rekonstrukcja = pycolmap.incremental_mapping(
-    database_path=output_path/ "bazunia.db",
+    database_path=output_dir/ "bazunia.db",
     image_path=zdjecia_dir,
     output_path=output_dir,
     options=pycolmap.IncrementalPipelineOptions(
       num_threads=n_watkow,
-      use_gpu=uzywacGPU
+      ba_use_gpu=uzywacGPU
     )
   )
   return rekonstrukcja
 
 # Odpalajjj to
-rekonstrukcja = wlacz_rekonstrukcje(zdjecia_dir, output_dir)
+#zwraca slownik, gdzie klucz to int takie id, jesli bedzie
+#pare rekonstrukcji to beda numerowane 0, 1, 2, ...
+rek_dict = wlacz_rekonstrukcje(zdjecia_dir, output_dir)
 
-if rekonstrukcja is not None:
-  print(f"Zrekonstruowano coś!")
-  print(f"Zarejestrowano {len(rekonstrukcja.images)} zdjęć")
-  print(f"Utworzono {len(rekonstrukcja.points3D)} puntków 3D")
-  rekonstrukcja.export_PLY(output_dir / "chmurka.PLY")
+#dla ulatwienia na poczatku wezmy tylko pierwsze
+if rek_dict[0] is not None:
+    rek = rek_dict[0]
+    print(f"Zrekonstruowano coś!")
+    print(f"Zarejestrowano {len(rek.images)} zdjęć")
+    print(f"Utworzono {len(rek.points3D)} punktów 3D")
+    rek.export_PLY(output_dir / "chmurka.PLY")
+    rek.write(output_dir / "reconstructions")
 
-rekonstrukcja.write(output_dir / "rekonstrukcja")
-zaladowana_rekonstrukcja = pycolmap.Reconstruction(output_dir / "rekonstrukcja")
+rek_dict[0].write(output_dir / "reconstructions")
+zaladowana_rekonstrukcja = pycolmap.Reconstruction(output_dir / "reconstructions")
+
+#odzniekształcanie (undistort lol) zdjęć i zapisywanie ich i innych rzeczy
+#(cale drzewo katalogowe) odpowiednio dla PMVS :D
+pycolmap.undistort_images(
+    output_path="./undistort",
+    input_path="./output/0",
+    image_path="./zdjecia",
+    output_type='PMVS',
+)
+
+#i do pmvs2
+import subprocess
+import os
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+pmvs2_executable = os.path.join(base_dir, "dependencies", "pmvs2")
+prefix = os.path.join(base_dir, "undistort", "pmvs/") #colmap wyżej powinien go stworzyc
+option_file = "pmvs_options.txt"#<- wewnatrz /undistort/pmvs 
+#dam go tu bo idk gdzie, zeby zobaczyc jakie sa opjce w pmvs2
+#wystarczy uruchomic go i wyswietli ładnie :)
+
+#taka komenda np wlaczylem:
+#./dependencies/CMVS-PMVS/program/OutputLinux/main/pmvs2 ./undistort/pmvs/ ./pmvs_options.txt
+#program, „prefix” czyli katalog ten pmvs i potem opcje ktore maja swoj format taki prosty
+#ale musza byc wewnatrz folderu pmvs
+subprocess.run(
+  [pmvs2_executable, prefix, option_file], 
+  check=True
+  )
+#w ./undistort/pmvs/models wypluje model o nazwie <nazwa pliku z opcjami>.ply xD
