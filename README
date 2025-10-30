@@ -1,0 +1,4 @@
+Potrzeba pmvs2 i cmvs (chociaz jeszcze nie robilem nic tak duzego zeby musiec rozbijac z tym cmvs)
+https://github.com/pmoulon/CMVS-PMVS.git
+skompilowałem tam jak jest z tym CMake build system, potem po prostu pliki wykonywalne 
+przenioslem do ./dependencies chociaz to w sumie my jestesmy ich dependency ¯\_(ツ)_/¯
