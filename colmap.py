@@ -2,35 +2,77 @@ import pycolmap
 from pathlib import Path
 import open3d as o3d
 import numpy as np
-import matplotlib as plt
-import trimesh
 import sys
 import shutil
-
-n_watkow = 8 # Ile wątków
-uzywacGPU = False # Czy robic z GPU
+import hashlib
 
 # Ścieżki
-zdjecia_dir = Path("./zdjecia")
-output_dir = Path("./output")
-reco_dir = Path("./output/reconstructions")
-undistort_dir = Path("./undistort")
-chmury_dir = Path("./chmury")
-
-# Tworzenie output jeżeli go nima
+katalog = Path(__file__).resolve().parent
+zdjecia_dir = katalog / Path("work/zdjecia")
+output_dir = katalog / Path("work/output")
+reco_dir = katalog / Path("work/output/reconstructions")
+undistort_dir = katalog / Path("work/undistort")
+dependencies_dir = katalog / Path("dependencies")
+chmury_dir = katalog / Path("chmury")
+zdjecia_hash = katalog / Path("work/img_hash")
+#tworzenie katalogow
 output_dir.mkdir(exist_ok=True)
 reco_dir.mkdir(exist_ok=True)
 undistort_dir.mkdir(exist_ok=True)
 chmury_dir.mkdir(exist_ok=True)
+zdjecia_hash.touch(exist_ok=True)
 
-def czy_istnieje_rekonstrukcja():
-    ply_path = output_dir / "chmurka.PLY"
-    
-    if reco_dir.exists() and ply_path.exists():
-        if any(reco_dir.iterdir()):
-            print("Znaleziono istniejącą rekonstrukcję")
-            return True
-    return False
+podana_nazwa = None
+n_watkow = 4 # Ile wątków
+uzywacGPU = False # Czy robic z GPU
+
+#oblicza hasz katalogu z czasow, program sam sprawdzi czy katalog ze zdjeciami sie zmienil i 
+#na podstawie tego zrobi co trzeba
+def haszuj_katalog(path: Path) -> str:
+    h = hashlib.sha256()
+    for p in sorted(path.rglob("*")):
+        if p.is_file():
+            h.update(str(p.relative_to(path)).encode())
+            h.update(str(p.stat().st_mtime_ns).encode())
+    return h.hexdigest()
+
+#hasz dalej potrzebny nawet jesli -f, bo na koncu trzeba nadpisac
+hash_nowy = haszuj_katalog(zdjecia_dir) 
+if(not "-f" in sys.argv):
+  with open(str(zdjecia_hash)) as f:
+      hash_stary = f.readline().strip()
+
+  czy_zmieniono_zdjecia = (hash_nowy != hash_stary)
+
+  #program juz sie wykonal wczesniej, caly, na tych zdjeciach
+  if(not czy_zmieniono_zdjecia):
+    print("Program już został wykonany na tych zdjeciach! Aby wymusic użyj opcji -f.")
+    sys.exit(0)
+  else: #jesli mamy nowe zdjecia to wyczyscmy katalogi
+    if output_dir.exists():
+      shutil.rmtree(output_dir)
+      output_dir.mkdir(exist_ok=True)
+      reco_dir.mkdir(exist_ok=True)
+
+if "-o" in sys.argv:
+    gdzie_nazwa = sys.argv.index("-o") + 1
+    podana_nazwa = sys.argv[gdzie_nazwa] if gdzie_nazwa < len(sys.argv) else None
+    print("Podana nazwa:", podana_nazwa, "Szukaj w chmurka :)")
+else:
+    print("Nie podano nazwy wyjsciowego modulu. Szukaj w", str((undistort_dir / "pmvs/models")))
+
+#nie wydaje sie potrzebne razem z rozwiazaniem z haszami, bo jedyna sytuacja jaka
+#zachodzi to albo te same, albo stare zdjecia -- po co wywoływać jeszcze raz cały program, albo
+#nawet tylko jego czesc jesli nie zmienily sie zdjecia? Zresztą można z opcją -f.
+#def czy_istnieje_rekonstrukcja():
+#    ply_path = output_dir / "chmurka.PLY"
+#    
+#    if reco_dir.exists() and ply_path.exists():
+#        if any(reco_dir.iterdir()):
+#            print("Znaleziono istniejącą rekonstrukcję")
+#            return True
+#    return False
+
 def colmap():
   # Ekstrakcja ficzerów
   pycolmap.extract_features(
@@ -80,18 +122,18 @@ def colmap():
       rek.export_PLY(output_dir / "chmurka.PLY")
       rek.write(output_dir / "reconstructions")
 
-  rek_dict[0].write(output_dir / "reconstructions")
-
-if not czy_istnieje_rekonstrukcja():
-   colmap()
-zaladowana_rekonstrukcja = pycolmap.Reconstruction(output_dir / "reconstructions")
+#depracted vvv
+#if not czy_istnieje_rekonstrukcja():
+colmap()
+#depracted vvv
+#zaladowana_rekonstrukcja = pycolmap.Reconstruction(output_dir / "reconstructions")
 
 #odzniekształcanie (undistort lol) zdjęć i zapisywanie ich i innych rzeczy
 #(cale drzewo katalogowe) odpowiednio dla PMVS :D
 pycolmap.undistort_images(
-    output_path="./undistort",
-    input_path="./output/0",
-    image_path="./zdjecia",
+    output_path=undistort_dir,
+    input_path=output_dir/"0",
+    image_path=zdjecia_dir,
     output_type='PMVS',
 )
 
@@ -99,26 +141,30 @@ pycolmap.undistort_images(
 import subprocess
 import os
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-pmvs2_executable = os.path.join(base_dir, "dependencies", "pmvs2")
-prefix = os.path.join(base_dir, "undistort", "pmvs/") #colmap wyżej powinien go stworzyc
-option_file = "option-all"#<- wewnatrz /undistort/pmvs 
+pmvs2_exec = dependencies_dir / "pmvs2"
+prefix = undistort_dir / "pmvs/" #colmap wyżej powinien go stworzyc
+option_file = "option-all" # <- wewnatrz /undistort/pmvs 
 #dam go tu bo idk gdzie, zeby zobaczyc jakie sa opjce w pmvs2
 #wystarczy uruchomic go i wyswietli ładnie :)
+print(pmvs2_exec, prefix, option_file)
 
 #taka komenda np wlaczylem:
 #./dependencies/CMVS-PMVS/program/OutputLinux/main/pmvs2 ./undistort/pmvs/ ./pmvs_options.txt
 #program, „prefix” czyli katalog ten pmvs i potem opcje ktore maja swoj format taki prosty
 #ale musza byc wewnatrz folderu pmvs
 subprocess.run(
-  [pmvs2_executable, prefix, option_file], 
+  [str(pmvs2_exec), str(prefix)+"/", option_file], 
   check=True
   )
 #w ./undistort/pmvs/models wypluje model o nazwie <nazwa pliku z opcjami>.ply xD
 
-if(len(sys.argv) > 1):
+if(podana_nazwa != None):
   stara_nazwa = option_file + ".ply"
   nowa_nazwa = sys.argv[1] + ".ply"
-  stary_plik = os.path.join(base_dir, "undistort/pmvs/models/", stara_nazwa)
-  nowy_plik = os.path.join(base_dir, "chmury/", nowa_nazwa)
+  stary_plik = undistort_dir / "pmvs/models/" / stara_nazwa
+  nowy_plik = chmury_dir / nowa_nazwa
   shutil.move(str(stary_plik), str(nowy_plik))
+
+#program sie cały wykonał, zmieniamy hash
+with open(str(zdjecia_hash), "w") as f:
+  f.write(hash_nowy)

@@ -4,15 +4,15 @@ import trimesh
 from pathlib import Path
 import os
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-prefix = os.path.join(base_dir, "undistort", "pmvs/")
+katalog = Path(__file__).resolve().parent
+prefix = katalog / "work/undistort/pmvs/"
 option_file = "slupek"
 model = option_file + ".ply"
 
 # Zmienna do wyboru metody (0=ball pivoting, 1=poisson, 2=alpha shapes)
 czegoUzywac = 1
 
-pcd = o3d.io.read_point_cloud(os.path.join(prefix, "models/", model))
+pcd = o3d.io.read_point_cloud(prefix / "models/" / model)
 
 if czegoUzywac == 1:
     print("Rekonstrukcja metodą poissona...")
