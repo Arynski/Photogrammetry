@@ -209,6 +209,7 @@ __marimo__/
 zdjecia/
 zdjecia2/
 output/
+undistort/
 dependencies/*
 !dependencies/README
 run.sh
