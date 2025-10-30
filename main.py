@@ -51,10 +51,18 @@ def ekstracjaKlatek(sciezka, docelowa_liczba_klatek):
 
         if flag == False:
             break
-
+        h, w, _ = klatka.shape
         if klatki % interwal == 0 and zapisane_klatki < docelowa_liczba_klatek:  
-            cv.imwrite(f'./zdjecia/img_{i}.jpg', klatka)
-            print(f'Zapisano ./zdjecia/img_{i}.jpg')
+            nowew, noweh = 0, 0
+            if(h > w):
+                noweh = 1280
+                nowew = 720
+            else:
+                noweh = 720
+                nowew = 1280
+            resized_img = cv.resize(klatka, (nowew, noweh));
+            cv.imwrite(f'./zdjecia/img_{i:04d}.jpg', resized_img)
+            print(f'Zapisano ./zdjecia/img_{i:04d}.jpg')
             i += 1
             zapisane_klatki += 1
             

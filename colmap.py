@@ -3,8 +3,9 @@ from pathlib import Path
 import open3d as o3d
 import numpy as np
 import matplotlib as plt
+import trimesh
 
-n_watkow = 4 # Ile wątków
+n_watkow = 8 # Ile wątków
 uzywacGPU = False # Czy robic z GPU
 
 # Ścieżki
@@ -27,7 +28,8 @@ pycolmap.extract_features(
   camera_mode=pycolmap.CameraMode.AUTO,
   sift_options=pycolmap.SiftExtractionOptions(
     num_threads=n_watkow,
-    use_gpu=uzywacGPU
+    use_gpu=uzywacGPU,
+    max_num_features = 3000
   )
 )
 
@@ -86,7 +88,7 @@ import os
 base_dir = os.path.dirname(os.path.abspath(__file__))
 pmvs2_executable = os.path.join(base_dir, "dependencies", "pmvs2")
 prefix = os.path.join(base_dir, "undistort", "pmvs/") #colmap wyżej powinien go stworzyc
-option_file = "pmvs_options.txt"#<- wewnatrz /undistort/pmvs 
+option_file = "option-all"#<- wewnatrz /undistort/pmvs 
 #dam go tu bo idk gdzie, zeby zobaczyc jakie sa opjce w pmvs2
 #wystarczy uruchomic go i wyswietli ładnie :)
 
@@ -99,3 +101,23 @@ subprocess.run(
   check=True
   )
 #w ./undistort/pmvs/models wypluje model o nazwie <nazwa pliku z opcjami>.ply xD
+
+
+pcd = o3d.io.read_point_cloud(os.path.join(prefix, "models/", option_file, ".ply"))
+pcd.estimate_normals()
+
+distances = pcd.compute_nearest_neighbor_distance()
+avg_dist = np.mean(distances)
+radius = 1.5 * avg_dist   
+
+mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+           pcd,
+           o3d.utility.DoubleVector([radius, radius * 2]))
+
+# create the triangular mesh with the vertices and faces from open3d
+tri_mesh = trimesh.Trimesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles),
+                          vertex_normals=np.asarray(mesh.vertex_normals))
+
+trimesh.convex.is_convex(tri_mesh)
+
+o3d.visualization.draw_plotly(tri_mesh)
