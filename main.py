@@ -10,7 +10,7 @@ import math
 import glob
 
 def wyczyscZdjecia():
-    files = glob.glob('./zdjecia/*')
+    files = glob.glob('.work/zdjecia/*')
     pomyslnieusuniete = 0
     nieusuniete = 0
     for f in files:
@@ -43,7 +43,7 @@ def ekstracjaKlatek(sciezka, docelowa_liczba_klatek):
     i = 0
     klatki = 0
     zapisane_klatki = 0
-    os.makedirs('./zdjecia', exist_ok=True)
+    os.makedirs('.work/zdjecia', exist_ok=True)
     wyczyscZdjecia()
     
     while(film.isOpened()):
@@ -61,8 +61,8 @@ def ekstracjaKlatek(sciezka, docelowa_liczba_klatek):
                 noweh = 720
                 nowew = 1280
             resized_img = cv.resize(klatka, (nowew, noweh));
-            cv.imwrite(f'./zdjecia/img_{i:04d}.jpg', resized_img)
-            print(f'Zapisano ./zdjecia/img_{i:04d}.jpg')
+            cv.imwrite(f'./work/zdjecia/img_{i:04d}.jpg', resized_img)
+            print(f'Zapisano ./work/zdjecia/img_{i:04d}.jpg')
             i += 1
             zapisane_klatki += 1
             
