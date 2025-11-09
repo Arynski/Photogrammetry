@@ -82,18 +82,29 @@ def colmap():
     sift_options=pycolmap.SiftExtractionOptions(
       num_threads=n_watkow,
       use_gpu=uzywacGPU,
-      max_num_features = 3000
+      max_num_features = 1500
     )
   )
 
   # Matching ficzerów
-  pycolmap.match_sequential(
+  #pycolmap.match_sequential(
+  #  database_path = output_dir / "bazunia.db",
+  #  sift_options=pycolmap.SiftMatchingOptions(
+  #    num_threads=n_watkow,
+  #    use_gpu=uzywacGPU
+  #  )
+  #)
+
+  #uzywajac drzewa
+  pycolmap.match_vocabtree(
     database_path = output_dir / "bazunia.db",
-    sift_options=pycolmap.SiftMatchingOptions(
-      num_threads=n_watkow,
-      use_gpu=uzywacGPU
+    matching_options = pycolmap.VocabTreeMatchingOptions(
+        num_nearest_neighbors = 5,           #ile najbliższych zdjec porownywac, ok 5-10
+        num_checks = 200,            #im wiecej tym lepiej ale wolniej : /
+        num_threads = n_watkow,
+        vocab_tree_path = dependencies_dir / "vocab_tree_flickr100K_words32K.bin"
     )
-  )
+)
 
   # Rekonstrukcja
   def wlacz_rekonstrukcje(zdjecia_dir, output_dir):
@@ -103,6 +114,10 @@ def colmap():
       output_path=output_dir,
       options=pycolmap.IncrementalPipelineOptions(
         num_threads=n_watkow,
+        ba_refine_focal_length=False,
+        ba_refine_principal_point=False,
+        ba_refine_extra_params=False,
+        ba_global_max_num_iterations=50,
         ba_use_gpu=uzywacGPU
       )
     )
