@@ -23,7 +23,7 @@ chmury_dir.mkdir(exist_ok=True)
 zdjecia_hash.touch(exist_ok=True)
 
 podana_nazwa = None
-n_watkow = 4 # Ile wątków
+n_watkow = 8 # Ile wątków
 uzywacGPU = False # Czy robic z GPU
 
 #oblicza hasz katalogu z czasow, program sam sprawdzi czy katalog ze zdjeciami sie zmienil i 
@@ -60,6 +60,10 @@ if "-o" in sys.argv:
     print("Podana nazwa:", podana_nazwa, "Szukaj w chmurka :)")
 else:
     print("Nie podano nazwy wyjsciowego modulu. Szukaj w", str((undistort_dir / "pmvs/models")))
+
+if "-nthreads" in sys.argv:
+  ile_watkow_idx = sys.argv.index("-nthreads") + 1
+  n_watkow = int(sys.argv[ile_watkow_idx])
 
 #nie wydaje sie potrzebne razem z rozwiazaniem z haszami, bo jedyna sytuacja jaka
 #zachodzi to albo te same, albo stare zdjecia -- po co wywoływać jeszcze raz cały program, albo
@@ -175,7 +179,7 @@ subprocess.run(
 
 if(podana_nazwa != None):
   stara_nazwa = option_file + ".ply"
-  nowa_nazwa = sys.argv[1] + ".ply"
+  nowa_nazwa = podana_nazwa + ".ply"
   stary_plik = undistort_dir / "pmvs/models/" / stara_nazwa
   nowy_plik = chmury_dir / nowa_nazwa
   shutil.move(str(stary_plik), str(nowy_plik))
