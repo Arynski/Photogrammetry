@@ -26,7 +26,7 @@ Program przyjmuje flagi:
         pozwala okreslic poziom zlozonosci, 0 to minimalna, szybka i najgorsza, 1 to średnia, 2 to najbardziej wymagająca (moze wyjsc zaszumione, ale to mozna zmienic w opcjach)
 
 ## Opcje
-    Są w pliku **options.yaml** w katalogu work. Domyslnie są tam trzy, te ktore opisalem wyzej, ale potem moznaby zrobić że użytkowik z GUI może niektóre opcje ustawić sobie i np jako kolejny tam wpis.
+Są w pliku **options.yaml** w katalogu work. Domyslnie są tam trzy, te ktore opisalem wyzej, ale potem moznaby zrobić że użytkowik z GUI może niektóre opcje ustawić sobie i np jako kolejny tam wpis.
 
 ## Logi
-    Plik z logami jest w **work/log**. Zapisuje tam pare rzeczy razem z godzinami -- mozna dodać, można odjąć. Nie zrobiłem póki co jakiegos resetowania go czy coś, po prostu nadpisuje. Można zrobić, że np po 2000 linii kasuje ale to nigdy ich tam nawet pewnie tyle nie bedzie.
+Plik z logami jest w **work/log**. Zapisuje tam pare rzeczy razem z godzinami -- mozna dodać, można odjąć. Nie zrobiłem póki co jakiegos resetowania go czy coś, po prostu nadpisuje. Można zrobić, że np po 2000 linii kasuje ale to nigdy ich tam nawet pewnie tyle nie bedzie.
