@@ -5,6 +5,8 @@ import numpy as np
 import sys
 import shutil
 import hashlib
+import logging
+import yaml
 
 # Ścieżki
 katalog = Path(__file__).resolve().parent
@@ -15,17 +17,37 @@ undistort_dir = katalog / Path("work/undistort")
 dependencies_dir = katalog / Path("dependencies")
 chmury_dir = katalog / Path("chmury")
 zdjecia_hash = katalog / Path("work/img_hash")
+logi = katalog / Path("work/log")
+opcje = katalog / Path("work/options.yaml")
 #tworzenie katalogow
 output_dir.mkdir(exist_ok=True)
 reco_dir.mkdir(exist_ok=True)
 undistort_dir.mkdir(exist_ok=True)
 chmury_dir.mkdir(exist_ok=True)
 zdjecia_hash.touch(exist_ok=True)
+logi.touch(exist_ok=True)
 
 podana_nazwa = None
 n_watkow = 8 # Ile wątków
 uzywacGPU = False # Czy robic z GPU
+zlozonosc = 0
 
+#konfiguracja pliku do logowania
+logging.basicConfig(
+    filename=str(logi),
+    filemode='a',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
+
+#czy jest w ogole plik z ustawieniami
+if not opcje.exists():
+    raise FileNotFoundError(f"Nie znaleziono pliku opcji YAML: {opcje}")
+
+#configs["Options"][0] to slownik najszybszych ustawien, 1 srednich a 2 takich mocarnyyyych
+with open(str(opcje), "r") as f:
+    configs = yaml.safe_load(f)
+    
 #oblicza hasz katalogu z czasow, program sam sprawdzi czy katalog ze zdjeciami sie zmienil i 
 #na podstawie tego zrobi co trzeba
 def haszuj_katalog(path: Path) -> str:
@@ -38,7 +60,7 @@ def haszuj_katalog(path: Path) -> str:
 
 #hasz dalej potrzebny nawet jesli -f, bo na koncu trzeba nadpisac
 hash_nowy = haszuj_katalog(zdjecia_dir) 
-if(not "-f" in sys.argv):
+if(not "-f" in sys.argv and not '-r' in sys.argv):
   with open(str(zdjecia_hash)) as f:
       hash_stary = f.readline().strip()
 
@@ -54,13 +76,29 @@ if(not "-f" in sys.argv):
       output_dir.mkdir(exist_ok=True)
       reco_dir.mkdir(exist_ok=True)
 
+if "-r" in sys.argv:
+  print("Podano opcję -r! Usuwam starą rekonstrukcję.")
+  if output_dir.exists():
+      shutil.rmtree(output_dir)
+      output_dir.mkdir(exist_ok=True)
+      reco_dir.mkdir(exist_ok=True)
+
 if "-o" in sys.argv:
     gdzie_nazwa = sys.argv.index("-o") + 1
     podana_nazwa = sys.argv[gdzie_nazwa] if gdzie_nazwa < len(sys.argv) else None
     print("Podana nazwa:", podana_nazwa, "Szukaj w chmurka :)")
 else:
     print("Nie podano nazwy wyjsciowego modulu. Szukaj w", str((undistort_dir / "pmvs/models")))
-
+if "-l" in sys.argv:
+    gdzie_zlozonosc = sys.argv.index("-l") + 1
+    zlozonosc = int(sys.argv[gdzie_zlozonosc]) if gdzie_zlozonosc < len(sys.argv) else 0
+    if(zlozonosc < 0 or zlozonosc > 2):
+      zlozonosc = 0
+      print(f"Podano nieprawidlowy poziom! Opcje to 0 - najszybsze, 1 - srednie, 2 - dokladne. Domyslnie ustawiono 0")
+    else:
+      print(f"Podano poziom rekonstrukcji {zlozonosc}")
+else:
+  print("Nie podano poziomu zlozonosci. Przyjęto 0 (najszybszy).")
 if "-nthreads" in sys.argv:
   ile_watkow_idx = sys.argv.index("-nthreads") + 1
   n_watkow = int(sys.argv[ile_watkow_idx])
@@ -78,6 +116,7 @@ if "-nthreads" in sys.argv:
 #    return False
 
 def colmap():
+  logging.info(f"Poczatek colmapowania, plik {podana_nazwa}")
   # Ekstrakcja ficzerów
   pycolmap.extract_features(
     database_path = output_dir / "bazunia.db",
@@ -86,9 +125,10 @@ def colmap():
     sift_options=pycolmap.SiftExtractionOptions(
       num_threads=n_watkow,
       use_gpu=uzywacGPU,
-      max_num_features = 1500
+      max_num_features = configs["Options"][zlozonosc]['max_features']
     )
   )
+  logging.info("wyekstraktowano")
 
   # Matching ficzerów
   #pycolmap.match_sequential(
@@ -103,12 +143,13 @@ def colmap():
   pycolmap.match_vocabtree(
     database_path = output_dir / "bazunia.db",
     matching_options = pycolmap.VocabTreeMatchingOptions(
-        num_nearest_neighbors = 5,           #ile najbliższych zdjec porownywac, ok 5-10
-        num_checks = 200,            #im wiecej tym lepiej ale wolniej : /
+        num_nearest_neighbors = configs["Options"][zlozonosc]['num_nearest_neighbors'],#ile najbliższych zdjec porownywac, ok 5-10
+        num_checks = configs["Options"][zlozonosc]['num_checks'],            #im wiecej tym lepiej ale wolniej : /
         num_threads = n_watkow,
         vocab_tree_path = dependencies_dir / "vocab_tree_flickr100K_words32K.bin"
     )
-)
+  )
+  logging.info("skonczono laczenie")
 
   # Rekonstrukcja
   def wlacz_rekonstrukcje(zdjecia_dir, output_dir):
@@ -121,10 +162,11 @@ def colmap():
         ba_refine_focal_length=False,
         ba_refine_principal_point=False,
         ba_refine_extra_params=False,
-        ba_global_max_num_iterations=50,
+        ba_global_max_num_iterations=configs["Options"][zlozonosc]['ba_global_max_num_iterations'],
         ba_use_gpu=uzywacGPU
       )
     )
+    logging.info(f"koniec rekonstrukcji -- stworzylo ich {len(rekonstrukcja)}")
     return rekonstrukcja
 
   # Odpalajjj to
@@ -159,10 +201,28 @@ pycolmap.undistort_images(
 #i do pmvs2
 import subprocess
 import os
+logging.info(f"Uruchomienie PMVS2")
+
+#najpierw przerobic plik option-all na takie opcje jakie my chcemy
+#po prostu zczytac kazda linie i jesli pierwszy ciag znakow nie jest kluczem w slowniku
+#to przepisac, inaczej nowa wartosc. Działa, bo on domyslnie te wartosci co nas interesuja tam ma juz
+with open(str(undistort_dir / "pmvs/opcje.txt"), 'w') as nowy:
+  with open(str(undistort_dir / "pmvs/option-all"), 'r') as stary:
+      for line in stary:
+        parts = line.split()
+        if not parts:
+            nowy.write(line)
+            continue
+        haslo = parts[0]
+        if haslo in configs["Options"][zlozonosc]:
+            nowy.write(f"{haslo} {configs['Options'][zlozonosc][haslo]}\n")
+        else:
+            nowy.write(line)
+
 
 pmvs2_exec = dependencies_dir / "pmvs2"
 prefix = undistort_dir / "pmvs/" #colmap wyżej powinien go stworzyc
-option_file = "option-all" # <- wewnatrz /undistort/pmvs 
+option_file = "opcje.txt" # <- wewnatrz /undistort/pmvs 
 #dam go tu bo idk gdzie, zeby zobaczyc jakie sa opjce w pmvs2
 #wystarczy uruchomic go i wyswietli ładnie :)
 print(pmvs2_exec, prefix, option_file)
@@ -187,3 +247,5 @@ if(podana_nazwa != None):
 #program sie cały wykonał, zmieniamy hash
 with open(str(zdjecia_hash), "w") as f:
   f.write(hash_nowy)
+
+logging.info(f"Koniec")
