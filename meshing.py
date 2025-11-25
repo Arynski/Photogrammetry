@@ -3,24 +3,41 @@ import open3d as o3d
 import trimesh
 from pathlib import Path
 import os
+import argparse
+import sys
+
+#przyjmuje nazwe pliku ply, zakladamy ze jest w ./chmury
+#i ktora metode wykorzystac (0=ball pivoting, 1=poisson, 2=alpha shapes)
+parser = argparse.ArgumentParser()
+parser.add_argument("filename", help="nazwa pliku PLY (sam plik, bez ścieżki)")
+parser.add_argument("method", help="metoda meshowania (0=ball pivoting, 1=poisson, 2=alpha shapes)")
+args = parser.parse_args()
 
 katalog = Path(__file__).resolve().parent
-prefix = katalog / "work/undistort/pmvs/"
-option_file = "slupek"
-model = option_file + ".ply"
+model = (katalog / "chmury" / args.filename).resolve()
 
-# Zmienna do wyboru metody (0=ball pivoting, 1=poisson, 2=alpha shapes)
-czegoUzywac = 1
+metody = ['ball pivoting', 'poisson', 'alpha shapes']
+print(f"Wybrano metodę: {metody[int(args.method)]}")
+if not model.exists():
+    print(f"Brak pliku: {model}")
+    sys.exit(1)
+else:
+    print(f"Używam pliku: {model}")
+czegoUzywac = int(args.method)
 
-pcd = o3d.io.read_point_cloud(prefix / "models/" / model)
+pcd = o3d.io.read_point_cloud(model)
+#odszumienie
+pcd = pcd.remove_statistical_outlier(nb_neighbors=30, std_ratio=1.0)[0]
+if czegoUzywac == 0:
+    distances = pcd.compute_nearest_neighbor_distance()
+    avg_dist = np.mean(distances)
+    radius = 3 * avg_dist # Dr Florent Poux powiedzial ze spoko jest robić 3-krotność średniego dystansu między sąsiadami
 
-if czegoUzywac == 1:
-    print("Rekonstrukcja metodą poissona...")
-    
-    # Liczenie normalsów
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(
-        radius=0.1, max_nn=30))
-    
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+        pcd,
+        o3d.utility.DoubleVector([radius, radius * 2]))
+
+elif czegoUzywac == 1:
     # Niby spoko robić nwm
     pcd.orient_normals_consistent_tangent_plane(k=15)
     
@@ -32,22 +49,8 @@ if czegoUzywac == 1:
     if len(densities) > 0:
         vertices_to_remove = densities < np.quantile(densities, 0.1)
         mesh.remove_vertices_by_mask(vertices_to_remove)
-    
-elif czegoUzywac == 0:
-    print("Rekonstrukcja metodą ball pivoting...")
-    
-    pcd.estimate_normals()
-    
-    distances = pcd.compute_nearest_neighbor_distance()
-    avg_dist = np.mean(distances)
-    radius = 3 * avg_dist # Dr Florent Poux powiedzial ze spoko jest robić 3-krotność średniego dystansu między sąsiadami
-    
-    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-        pcd,
-        o3d.utility.DoubleVector([radius, radius * 2]))
-elif czegoUzywac == 2:
-  print("Rekonstrukcja metodą alpha shapes")
 
+elif czegoUzywac == 2:
   alpha = 0.1
   mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, alpha)
   
