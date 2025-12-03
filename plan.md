@@ -5,4 +5,4 @@
 * Dopracowanie GUI
     * Dwa rodzaje okien z wiadomościami (zaawansowane oraz proste)
     * Wyświetlanie wynikowego modelu
-* Dodanie tworzenia siatki ze zbioru punktów
+* Dodanie tworzenia kolorowej siatki ze zbioru punktów
