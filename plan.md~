@@ -5,5 +5,4 @@
 * Dopracowanie GUI
     * Dwa rodzaje okien z wiadomościami (zaawansowane oraz proste)
     * Wyświetlanie wynikowego modelu
-* Dodanie tworzenia kolorowej siatki (mesh) ze zbioru punktów
-* Zrobienie tak żeby działało
+* Dodanie tworzenia kolorowej siatki ze zbioru punktów
