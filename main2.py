@@ -133,6 +133,40 @@ class ExtractionThread(QThread):
         except Exception as e:
             self.err.emit(str(e))
 
+class ColmapThread(QThread):
+    koniec = Signal(str)
+    err = Signal(str)
+    log_signal = Signal(str)
+
+    def __init__(self, nazwa_modelu, ile_watkow):
+        super().__init__()
+        self.nazwa_modelu = nazwa_modelu
+        self.ile_watkow = ile_watkow
+
+    def run(self):
+        import subprocess
+        try:
+            process = subprocess.Popen(
+                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', self.ile_watkow],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    self.log_signal.emit(line)
+
+            process.wait()
+
+            if process.returncode == 0:
+                self.koniec.emit(self.nazwa_modelu)
+        except subprocess.CalledProcessError as e:
+            self.err.emit(str(e))
+        except Exception as e:
+            self.err.emit(str(e))
+
 class MyWindow:
     def __init__(self):
         # wczytanie .ui
@@ -155,6 +189,76 @@ class MyWindow:
         # Podłączenie przycisków
         self.window.wyszukiwanie.clicked.connect(self.przegladaj_film)
         self.window.startEkstrakcji.clicked.connect(self.start_extract)
+        self.window.startRekonstrukcji.clicked.connect(self.uruchom_colmap)
+        self.aktualizuj_liczbe_zdjec()
+
+    def aktualizuj_liczbe_zdjec(self):
+        try:
+            zdjecia_folder = './work/zdjecia'
+            if os.path.exists(zdjecia_folder):
+                zdjecia = [f for f in os.listdir(zdjecia_folder) 
+                            if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+                liczba_zdjec = len(zdjecia)
+                self.window.rekonstrukcjaLabel2.setText(f"{liczba_zdjec} zdjęć")
+            else:
+                self.window.rekonstrukcjaLabel2.setText("0 zdjęć")
+        except Exception as e:
+            print(f"Błąd przy aktualizacji liczby zdjęć: {e}")
+            self.window.rekonstrukcjaLabel2.setText("błąd")
+
+    def uruchom_colmap(self):
+        nazwa_modelu = self.window.nazwaWybor.text().strip()
+        ile_watkow = self.window.lineEdit_10.text().strip()
+        
+        if not nazwa_modelu:
+            QMessageBox.warning(self.window, 'Błąd', 'Proszę podać nazwę modelu 3D!')
+            return
+        
+        if not ile_watkow:
+            QMessageBox.warning(self.window, 'Błąd', 'Proszę podać liczbę wątków w zakładce Opcje!')
+            return
+        
+        try:
+            watki_int = int(ile_watkow)
+            if watki_int <= 0:
+                raise ValueError("Liczba wątków musi być dodatnia")
+        except ValueError:
+            QMessageBox.warning(self.window, 'Błąd', 'Proszę wprowadzić poprawną liczbę wątków!')
+            return
+
+
+        if not nazwa_modelu.endswith('.ply'):
+            nazwa_modelu += '.ply'
+
+        # Sprawdź czy są zdjęcia
+        zdjecia_folder = './work/zdjecia'
+        if not os.path.exists(zdjecia_folder) or not os.listdir(zdjecia_folder):
+            QMessageBox.warning(self.window, 'Błąd', 'Brak wyekstrahowanych klatek! Najpierw wykonaj ekstrakcję.')
+            return
+
+        # Wyłączenie GUI na czas rekonstrukcji
+        self.window.startRekonstrukcji.setEnabled(False)
+        self.window.startEkstrakcji.setEnabled(False)
+        self.window.wyszukiwanie.setEnabled(False)
+
+        # COLMAP w osobnym wątku
+        self.colmap_thread = ColmapThread(nazwa_modelu, ile_watkow)
+        self.colmap_thread.koniec.connect(self.colmap_finished)
+        self.colmap_thread.err.connect(self.colmap_error)
+        self.colmap_thread.log_signal.connect(self.log)
+        self.colmap_thread.start()
+
+    def colmap_finished(self, nazwa_modelu):
+        self.window.startRekonstrukcji.setEnabled(True)
+        self.window.startEkstrakcji.setEnabled(True)
+        self.window.wyszukiwanie.setEnabled(True)
+        QMessageBox.information(self.window, 'Sukces', f'Rekonstrukcja zakończona! Model zapisano jako {nazwa_modelu}')
+
+    def colmap_error(self, komunikat_bledu):
+        self.window.startRekonstrukcji.setEnabled(True)
+        self.window.startEkstrakcji.setEnabled(True)
+        self.window.wyszukiwanie.setEnabled(True)
+        QMessageBox.critical(self.window, 'Błąd', f'Wystąpił błąd podczas rekonstrukcji: {komunikat_bledu}')
 
     def log(self, message):
         self.window.logWindow.append(message)
@@ -231,6 +335,7 @@ class MyWindow:
 
     def ekstrakcja_sukces(self, liczba_klatek):
         self.ekstrakcja_odwies();
+        self.aktualizuj_liczbe_zdjec()
         QMessageBox.information(self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
 
     def ekstrakcja_blad(self, komunikat_bledu):
