@@ -1,7 +1,6 @@
 import sys
 import cv2 as cv
 import os
-import sys
 import subprocess
 import glob
 from PySide6.QtWidgets import QApplication, QFileDialog
@@ -10,7 +9,9 @@ from PySide6.QtCore import QFile
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QMessageBox
 
-def ekstracjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=None, log_callback=None, progress_callback=None):
+sciezka_zdjecia = './work/zdjecia'
+
+def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=None, log_callback=None, progress_callback=None):
     print(f'Otwieranie filmu: {film_info.sciezka}')
     if log_callback:
         log_callback(f'Otwieranie filmu: {film_info.sciezka}')
@@ -72,7 +73,7 @@ def ekstracjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=No
 
         #wysyla jaki procent zrobiony
         if(progress_callback):
-            progress_callback((zapisane_klatki*100)/docelowa_liczba_klatek) #w procentach
+            progress_callback(int((zapisane_klatki*100)/docelowa_liczba_klatek)) #w procentach
         
         # Przerwij jeśli osiągnięto docelową liczbę klatek
         if zapisane_klatki >= docelowa_liczba_klatek:
@@ -122,7 +123,7 @@ class ExtractionThread(QThread):
 
     def run(self):
         try:
-            wyekstraktowane_klatki = ekstracjaKlatek(
+            wyekstraktowane_klatki = ekstrakcjaKlatek(
                 self.film_info, 
                 self.docelowa_liczba_klatek, 
                 self.docelowa_rozdzielczosc,
@@ -130,6 +131,75 @@ class ExtractionThread(QThread):
                 progress_callback=self.progres.emit
             )
             self.koniec.emit(wyekstraktowane_klatki)
+        except Exception as e:
+            self.err.emit(str(e))
+
+class ColmapThread(QThread):
+    koniec = Signal(str)
+    err = Signal(str)
+    log_signal = Signal(str)
+
+    def __init__(self, nazwa_modelu, ile_watkow, opcje_poziom):
+        super().__init__()
+        self.nazwa_modelu = nazwa_modelu
+        self.ile_watkow = ile_watkow
+        self.opcje_poziom = opcje_poziom
+
+    def run(self):
+        import subprocess
+        try:
+            process = subprocess.Popen(
+                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    self.log_signal.emit(line)
+
+            process.wait()
+
+            if process.returncode == 0:
+                self.koniec.emit(self.nazwa_pliku)
+        except subprocess.CalledProcessError as e:
+            self.err.emit(str(e))
+        except Exception as e:
+            self.err.emit(str(e))
+
+class MeshingThread(QThread):
+    koniec = Signal(str)
+    err = Signal(str)
+    log_signal = Signal(str)
+
+    def __init__(self, nazwa_pliku, metoda):
+        super().__init__()
+        self.nazwa_pliku = nazwa_pliku
+        self.metoda = metoda
+
+    def run(self):
+        import subprocess
+        try:
+            process = subprocess.Popen(
+                ['python3', 'meshing.py', self.nazwa_pliku, str(self.metoda)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    self.log_signal.emit(line)
+
+            process.wait()
+
+            if process.returncode == 0:
+                self.koniec.emit(self.nazwa_modelu)
+        except subprocess.CalledProcessError as e:
+            self.err.emit(str(e))
         except Exception as e:
             self.err.emit(str(e))
 
@@ -142,6 +212,24 @@ class MyWindow:
         self.window = loader.load(ui_file)
         ui_file.close()
 
+        #ustawienie pewnych rzeczy
+        self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
+        self.window.wyborOpcji.clear()
+        self.window.wyborOpcji.addItem("Najlepsza jakość", 2)
+        self.window.wyborOpcji.addItem("Połączenie obu światów", 1)
+        self.window.wyborOpcji.addItem("Największa wydajność", 0)
+        self.window.wyborOpcji.addItem("Własne ustawienia", 3)
+        #0=ball pivoting, 1=poisson, 2=alpha shapes
+        self.window.metodaWybor.clear()
+        self.window.metodaWybor.addItem("Ball pivoting", 0)
+        self.window.metodaWybor.addItem("Poisson", 1)
+        self.window.metodaWybor.addItem("Alpha shapes", 2)
+        watki = QThread.idealThreadCount()
+        if(watki < 1):
+            watki = 1
+        self.window.wybierzLiczbeWatkow.setRange(1, watki)
+        self.window.wybierzLiczbeWatkow.setValue(watki)  #ustawi na maks
+        
         #atrybuty
         self.film = None;
         self.typowe_rozdzielczosci = [
@@ -155,6 +243,11 @@ class MyWindow:
         # Podłączenie przycisków
         self.window.wyszukiwanie.clicked.connect(self.przegladaj_film)
         self.window.startEkstrakcji.clicked.connect(self.start_extract)
+        self.window.startRekonstrukcji.clicked.connect(self.start_colmap)
+        self.window.startMeshowania.clicked.connect(self.start_mesh)
+
+        print("plikow w zdjeciach:", len(os.listdir(sciezka_zdjecia)))
+        print("wartosc:", self.window.wyborOpcji.currentData())
 
     def log(self, message):
         self.window.logWindow.append(message)
@@ -175,7 +268,6 @@ class MyWindow:
             self.aktualizuj_info_klatek(film_sciezka)
             print(f'Film ({self.film.sciezka}, width: {self.film.szerokosc}, height: {self.film.wysokosc}, klatek: {self.film.liczba_klatek}, fps: {self.film.fps})')
             self.window.sciezkaFilmu.setText(film_sciezka)
-            self.aktualizuj_info_klatek(film_sciezka)
             self.update_rozdzielczosc_combo()
             self.window.wybierzLiczbeKlatek.setRange(0, self.film.liczba_klatek)
             self.window.wybierzLiczbeKlatek.setValue(self.film.liczba_klatek)  #ustawi na maks
@@ -232,6 +324,7 @@ class MyWindow:
     def ekstrakcja_sukces(self, liczba_klatek):
         self.ekstrakcja_odwies();
         QMessageBox.information(self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
+        self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
 
     def ekstrakcja_blad(self, komunikat_bledu):
         self.ekstrakcja_odwies();
@@ -246,13 +339,12 @@ class MyWindow:
             QMessageBox.warning(self.window, 'Błąd', 'Wybrany plik nie istnieje!')
             return
 
-        klatki_text = self.window.wybierzLiczbeKlatek.text()
+        docelowa_liczba_klatek = self.window.wybierzLiczbeKlatek.value()
         try:
-            docelowa_liczba_klatek = int(klatki_text)
             if docelowa_liczba_klatek <= 0:
                 raise ValueError("Liczba klatek musi być dodatnia")
         except ValueError:
-            QMessageBox.warning(self, 'Błąd', 'Proszę wprowadzić poprawną liczbę klatek!')
+            QMessageBox.warning(self.window, 'Błąd', 'Proszę wprowadzić poprawną liczbę klatek!')
             return
 
         docelowa_rozdzielczosc = self.window.wyborRozdzielczosci.currentData()
@@ -273,6 +365,73 @@ class MyWindow:
         self.window.extraction_thread.log_signal.connect(self.log)
         self.window.extraction_thread.progres.connect(self.window.ekstrakcjaProgres.setValue)
         self.window.extraction_thread.start()
+
+    def colmap_sukces(self, nazwa_modelu):
+        self.window.startRekonstrukcji.setEnabled(True)
+        QMessageBox.information(self.window, 'Sukces', f'Rekonstrukcja zakończona! Model zapisano jako {nazwa_modelu}')
+
+    def colmap_blad(self, komunikat_bledu):
+        self.window.startRekonstrukcji.setEnabled(True)
+        QMessageBox.critical(self.window, 'Błąd', f'Wystąpił błąd podczas rekonstrukcji: {komunikat_bledu}')
+        
+    def start_colmap(self):
+        nazwa_modelu = self.window.nazwaModelu.text().strip()
+        opcje = self.window.wyborOpcji.currentData()
+        if not nazwa_modelu:
+            QMessageBox.warning(self.window, 'Błąd', 'Proszę podać nazwę modelu 3D!')
+            return
+
+        if not nazwa_modelu.endswith('.ply'):
+            nazwa_modelu += '.ply'
+
+        print("opcje:", opcje)
+        print("nazwa:", nazwa_modelu)
+        # Trzeba sprawdzic czy sa zdjecia
+        if not os.path.exists(sciezka_zdjecia) or not os.listdir(sciezka_zdjecia):
+            QMessageBox.warning(self.window, 'Błąd', 'Brak zdjęć! Najpierw wykonaj ekstrakcję.')
+            return
+
+        # Wyłączenie GUI na czas rekonstrukcji
+        self.window.startRekonstrukcji.setEnabled(False)
+
+        # colmap.py w osobnym wątku
+        self.colmap_thread = ColmapThread(nazwa_modelu, self.window.wybierzLiczbeWatkow.value(), opcje)
+        self.colmap_thread.koniec.connect(self.colmap_sukces)
+        self.colmap_thread.err.connect(self.colmap_blad)
+        self.colmap_thread.log_signal.connect(self.log)
+        self.colmap_thread.start()
+
+    def mesh_sukces(self, nazwa_modelu):
+        self.window.startMeshowania.setEnabled(True)
+        QMessageBox.information(self.window, 'Sukces', f'Siatka stworzona! Model zapisano jako ???NIE WIEM??? {nazwa_modelu}')
+
+    def mesh_blad(self, komunikat_bledu):
+        self.window.startMeshowania.setEnabled(True)
+        QMessageBox.critical(self.window, 'Błąd', f'Wystąpił błąd podczas tworzenia siatki: {komunikat_bledu}')
+        
+    def start_mesh(self):
+        nazwa_modelu = self.window.nazwaModelu.text().strip()
+        metoda = self.window.metodaWybor.currentData()
+        if not nazwa_modelu:
+            QMessageBox.warning(self.window, 'Błąd', 'Proszę podać nazwę modelu 3D!')
+            return
+
+        print("opcje:", metoda)
+        print("nazwa:", nazwa_modelu)
+        # Trzeba sprawdzic czy jest ten plik
+        if not os.path.exists("./chmury/"+nazwa_modelu):
+            QMessageBox.warning(self.window, 'Błąd', 'Wybrany model nie istnieje!.')
+            return
+
+        # Wyłączenie GUI na czas rekonstrukcji
+        self.window.startMeshowania.setEnabled(False)
+
+        # colmap.py w osobnym wątku
+        self.mesh_thread = MeshingThread(nazwa_modelu, metoda)
+        self.mesh_thread.koniec.connect(self.colmap_sukces)
+        self.mesh_thread.err.connect(self.colmap_blad)
+        self.mesh_thread.log_signal.connect(self.log)
+        self.mesh_thread.start()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

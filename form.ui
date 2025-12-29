@@ -75,13 +75,6 @@
              <string>Ekstrakcja klatek</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_5">
-             <item row="2" column="0">
-              <widget class="QPushButton" name="wyszukiwanie">
-               <property name="text">
-                <string>Wyszukaj</string>
-               </property>
-              </widget>
-             </item>
              <item row="3" column="0">
               <widget class="QLabel" name="extractLabel2">
                <property name="enabled">
@@ -98,10 +91,16 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
-              <widget class="QLineEdit" name="sciezkaFilmu">
+             <item row="5" column="0">
+              <widget class="QLabel" name="extractLabel3">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="text">
-                <string/>
+                <string>Wybierz docelową rozdzielczość</string>
                </property>
               </widget>
              </item>
@@ -118,8 +117,39 @@
                </property>
               </widget>
              </item>
+             <item row="6" column="0">
+              <widget class="QComboBox" name="wyborRozdzielczosci">
+               <item>
+                <property name="text">
+                 <string>Oryginalna</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>1080p</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>720p</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>480p</string>
+                </property>
+               </item>
+              </widget>
+             </item>
              <item row="4" column="0">
               <widget class="QSpinBox" name="wybierzLiczbeKlatek"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLineEdit" name="sciezkaFilmu">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
              </item>
              <item row="7" column="0">
               <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -155,40 +185,10 @@
                </item>
               </layout>
              </item>
-             <item row="6" column="0">
-              <widget class="QComboBox" name="wyborRozdzielczosci">
-               <item>
-                <property name="text">
-                 <string>Oryginalna</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>1080p</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>720p</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>480p</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="5" column="0">
-              <widget class="QLabel" name="extractLabel3">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
+             <item row="2" column="0">
+              <widget class="QPushButton" name="wyszukiwanie">
                <property name="text">
-                <string>Wybierz docelową rozdzielczość</string>
+                <string>Wyszukaj</string>
                </property>
               </widget>
              </item>
@@ -264,6 +264,30 @@
              <item row="4" column="0">
               <layout class="QVBoxLayout" name="verticalLayout_3">
                <item>
+                <widget class="QLabel" name="label_14">
+                 <property name="text">
+                  <string>Nazwa rzadkiej chmury</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="nazwaModelu">
+                 <property name="placeholderText">
+                  <string>Wprowadź nazwę .ply</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_15">
+                 <property name="text">
+                  <string>Używane wątki:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="wybierzLiczbeWatkow"/>
+               </item>
+               <item>
                 <spacer name="verticalSpacer_2">
                  <property name="orientation">
                   <enum>Qt::Orientation::Vertical</enum>
@@ -287,6 +311,12 @@
              </item>
              <item row="3" column="0">
               <widget class="QComboBox" name="wyborOpcji">
+               <property name="editable">
+                <bool>false</bool>
+               </property>
+               <property name="labelDrawingMode">
+                <enum>QComboBox::LabelDrawingMode::UseStyle</enum>
+               </property>
                <item>
                 <property name="text">
                  <string>Najlepsza jakość</string>
@@ -300,6 +330,11 @@
                <item>
                 <property name="text">
                  <string>Największa wydajność</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Własne ustawienia</string>
                 </property>
                </item>
               </widget>
