@@ -149,7 +149,7 @@ class ColmapThread(QThread):
         import subprocess
         try:
             process = subprocess.Popen(
-                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom)],
+                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom), '-f'],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -163,7 +163,7 @@ class ColmapThread(QThread):
             process.wait()
 
             if process.returncode == 0:
-                self.koniec.emit(self.nazwa_pliku)
+                self.koniec.emit(self.nazwa_modelu)
         except subprocess.CalledProcessError as e:
             self.err.emit(str(e))
         except Exception as e:
@@ -197,7 +197,7 @@ class MeshingThread(QThread):
             process.wait()
 
             if process.returncode == 0:
-                self.koniec.emit(self.nazwa_modelu)
+                self.koniec.emit(self.nazwa_pliku)
         except subprocess.CalledProcessError as e:
             self.err.emit(str(e))
         except Exception as e:
@@ -215,9 +215,9 @@ class MyWindow:
         #ustawienie pewnych rzeczy
         self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
         self.window.wyborOpcji.clear()
+        self.window.wyborOpcji.addItem("Największa wydajność", 0)
         self.window.wyborOpcji.addItem("Najlepsza jakość", 2)
         self.window.wyborOpcji.addItem("Połączenie obu światów", 1)
-        self.window.wyborOpcji.addItem("Największa wydajność", 0)
         self.window.wyborOpcji.addItem("Własne ustawienia", 3)
         #0=ball pivoting, 1=poisson, 2=alpha shapes
         self.window.metodaWybor.clear()
@@ -418,6 +418,8 @@ class MyWindow:
 
         print("opcje:", metoda)
         print("nazwa:", nazwa_modelu)
+        if not nazwa_modelu.endswith('.ply'):
+            nazwa_modelu += '.ply'
         # Trzeba sprawdzic czy jest ten plik
         if not os.path.exists("./chmury/"+nazwa_modelu):
             QMessageBox.warning(self.window, 'Błąd', 'Wybrany model nie istnieje!.')

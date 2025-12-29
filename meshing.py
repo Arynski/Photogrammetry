@@ -15,6 +15,8 @@ args = parser.parse_args()
 
 katalog = Path(__file__).resolve().parent
 model = (katalog / "chmury" / args.filename).resolve()
+nazwa = Path(args.filename).stem.split('.')[0]
+wyjscie = katalog / "chmury" / f"{nazwa}.obj"
 
 metody = ['ball pivoting', 'poisson', 'alpha shapes']
 print(f"Wybrano metodę: {metody[int(args.method)]}")
@@ -51,7 +53,9 @@ elif czegoUzywac == 1:
         mesh.remove_vertices_by_mask(vertices_to_remove)
 
 elif czegoUzywac == 2:
-  alpha = 0.1
+  distances = pcd.compute_nearest_neighbor_distance()
+  alpha = 2.5 * np.mean(distances)
+  
   mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, alpha)
   
 
@@ -72,6 +76,9 @@ tri_mesh.update_faces(tri_mesh.unique_faces())
 print(f"Statystyki:")
 print(f"Vertices: {len(tri_mesh.vertices)}")
 print(f"Faces: {len(tri_mesh.faces)}")
+
+
+o3d.io.write_triangle_mesh(str(wyjscie), mesh)
 
 # Wyświetlanie
 o3d.visualization.draw_plotly([mesh])
