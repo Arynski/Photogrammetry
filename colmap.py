@@ -239,7 +239,7 @@ subprocess.run(
 
 if(podana_nazwa != None):
   stara_nazwa = option_file + ".ply"
-  nowa_nazwa = podana_nazwa + ".ply"
+  nowa_nazwa = Path(podana_nazwa).stem + ".ply"
   stary_plik = undistort_dir / "pmvs/models/" / stara_nazwa
   nowy_plik = chmury_dir / nowa_nazwa
   shutil.move(str(stary_plik), str(nowy_plik))
