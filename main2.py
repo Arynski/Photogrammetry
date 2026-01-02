@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QMessageBox
 
 sciezka_zdjecia = './work/zdjecia'
 
+#zaklada ze dostalo docelowa_rozdzielczosc w takiej samej orientacji (pion/poziom) co filmik (a tak jest w combo)
 def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=None, log_callback=None, progress_callback=None):
     print(f'Otwieranie filmu: {film_info.sciezka}')
     if log_callback:
@@ -38,6 +39,7 @@ def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=N
     i = 0
     klatki = 0
     zapisane_klatki = 0
+    ekstraktowaneh, ekstraktowanew = 0, 0
     os.makedirs('work/zdjecia', exist_ok=True)
     wyczyscZdjecia(log_callback)
 
@@ -46,22 +48,13 @@ def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=N
         if flag == False:
             break
         h, w, _ = klatka.shape
-        
+        wymiary = (w, h)
+        if(docelowa_rozdzielczosc): # okreslenie jakie wymiary (pionowe czy poziome)
+            wymiary = docelowa_rozdzielczosc; #to powinno byc zgodne z wymiarami filmu, bo tak sa zapisywane do combo
+
+        #faktyczne pobranie klatki
         if klatki % interwal == 0 and zapisane_klatki < docelowa_liczba_klatek:  
-            # Docelowa rozdzielczosc, chyba ze nie wybrana to HD
-            if docelowa_rozdzielczosc:
-                nowew, noweh = docelowa_rozdzielczosc
-                if(h > w):
-                    nowew, noweh = noweh, nowew
-            else:
-                if(h > w):
-                    noweh = 1280
-                    nowew = 720
-                else:
-                    noweh = 720
-                    nowew = 1280
-            
-            resized_img = cv.resize(klatka, (nowew, noweh))
+            resized_img = cv.resize(klatka, wymiary)
             cv.imwrite(f'./work/zdjecia/img_{i:04d}.jpg', resized_img)
             print(f'Zapisano ./work/zdjecia/img_{i:04d}.jpg')
             if log_callback:
@@ -221,7 +214,7 @@ class MyWindow:
         self.window.wyborOpcji.addItem("Własne ustawienia", 3)
         #0=ball pivoting, 1=poisson, 2=alpha shapes
         self.window.metodaWybor.clear()
-        self.window.metodaWybor.addItem("Ball pivoting", 0)
+        self.window.metodaWybor.addItem("Ball pivotng", 0)
         self.window.metodaWybor.addItem("Poisson", 1)
         self.window.metodaWybor.addItem("Alpha shapes", 2)
         watki = QThread.idealThreadCount()
@@ -295,19 +288,24 @@ class MyWindow:
     def update_rozdzielczosc_combo(self):
         if(self.film == None):
             return
-            
-        og_w, og_h = self.film.szerokosc, self.film.wysokosc  
+        film_poziomy = True;
+        wymiar = (self.film.szerokosc, self.film.wysokosc) # i to moze byc pionowe/poziome
+        if(wymiar[0] < wymiar[1]):
+            film_poziomy = False;
         self.window.wyborRozdzielczosci.clear()
         
         # OG rozdzielczość jako pierwsza pozycja
         self.window.wyborRozdzielczosci.addItem(
-            f"Oryginalna ({og_w}x{og_h})", 
-            (og_w, og_h)
+            f"Oryginalna ({max(wymiar)}x{min(wymiar)})", 
+            wymiar
         )
         # Dodawania rozdzielczosci <= od oryginalnej
         added_count = 0
+        # w typowych width > height, ale niekoniecznie mamy film poziomy
         for width, height, name in self.typowe_rozdzielczosci:
-            if width < og_w and height < og_h:
+            if not film_poziomy:
+                width, height = height, width
+            if width <= wymiar[0] and height <= wymiar[1]:
                 self.window.wyborRozdzielczosci.addItem(name, (width, height))
                 added_count += 1
 
@@ -322,8 +320,8 @@ class MyWindow:
        # self.window.ekstrakcjaProgres.setVisible(False)
 
     def ekstrakcja_sukces(self, liczba_klatek):
-        self.ekstrakcja_odwies();
-        self.aktualizuj_liczbe_zdjec()
+        self.ekstrakcja_odwies()
+        # self.aktualizuj_liczbe_zdjec() nie mam zielonego pojecia jak to sie tutaj znalazlo ani co to za metoda
         QMessageBox.information(self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
         self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
 
