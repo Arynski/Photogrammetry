@@ -429,8 +429,8 @@ class MyWindow:
 
         # colmap.py w osobnym wątku
         self.mesh_thread = MeshingThread(nazwa_modelu, metoda)
-        self.mesh_thread.koniec.connect(self.colmap_sukces)
-        self.mesh_thread.err.connect(self.colmap_blad)
+        self.mesh_thread.koniec.connect(self.mesh_sukces)
+        self.mesh_thread.err.connect(self.mesh_blad)
         self.mesh_thread.log_signal.connect(self.log)
         self.mesh_thread.start()
 
