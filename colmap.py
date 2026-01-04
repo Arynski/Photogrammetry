@@ -76,8 +76,8 @@ if(not "-f" in sys.argv and not '-r' in sys.argv):
       output_dir.mkdir(exist_ok=True)
       reco_dir.mkdir(exist_ok=True)
 
-if "-r" in sys.argv:
-  print("Podano opcję -r! Usuwam starą rekonstrukcję.")
+if "-r" in sys.argv or "-f" in sys.argv:
+  print("Podano opcję -r/-f! Usuwam starą rekonstrukcję.")
   if output_dir.exists():
       shutil.rmtree(output_dir)
       output_dir.mkdir(exist_ok=True)
@@ -117,15 +117,22 @@ if "-nthreads" in sys.argv:
 
 def colmap():
   logging.info(f"Poczatek colmapowania, plik {podana_nazwa}")
+
+  reader_opts = pycolmap.ImageReaderOptions(
+      camera_model='SIMPLE_RADIAL',
+      default_focal_length_factor=1.0,  # użyj pełnej rozdzielczości obrazu
+  )
   # Ekstrakcja ficzerów
   pycolmap.extract_features(
     database_path = output_dir / "bazunia.db",
     image_path = zdjecia_dir,
-    camera_mode=pycolmap.CameraMode.AUTO,
+    camera_mode=pycolmap.CameraMode.SINGLE,
+    reader_options=reader_opts,
     sift_options=pycolmap.SiftExtractionOptions(
       num_threads=n_watkow,
       use_gpu=uzywacGPU,
-      max_num_features = configs["Options"][zlozonosc]['max_features']
+      max_num_features = configs["Options"][zlozonosc]['max_features'],
+      max_image_size=10000 #NIE SKALUJ
     )
   )
   logging.info("wyekstraktowano")
