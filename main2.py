@@ -8,8 +8,19 @@ from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QMessageBox
+from pathlib import Path
+import logging
 
 sciezka_zdjecia = './work/zdjecia'
+
+katalog = Path(__file__).resolve().parent
+logi = katalog / Path("work/log")
+logging.basicConfig(
+    filename=str(logi),
+    filemode='a',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
 
 #zaklada ze dostalo docelowa_rozdzielczosc w takiej samej orientacji (pion/poziom) co filmik (a tak jest w combo)
 def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=None, log_callback=None, progress_callback=None):
@@ -142,7 +153,8 @@ class ColmapThread(QThread):
         import subprocess
         try:
             process = subprocess.Popen(
-                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom), '-f'],
+                # ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom), '-f'],
+                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -214,7 +226,7 @@ class MyWindow:
         self.window.wyborOpcji.addItem("Własne ustawienia", 3)
         #0=ball pivoting, 1=poisson, 2=alpha shapes
         self.window.metodaWybor.clear()
-        self.window.metodaWybor.addItem("Ball pivotng", 0)
+        self.window.metodaWybor.addItem("Ball pivoting", 0)
         self.window.metodaWybor.addItem("Poisson", 1)
         self.window.metodaWybor.addItem("Alpha shapes", 2)
         watki = QThread.idealThreadCount()
@@ -324,6 +336,7 @@ class MyWindow:
         # self.aktualizuj_liczbe_zdjec() nie mam zielonego pojecia jak to sie tutaj znalazlo ani co to za metoda
         QMessageBox.information(self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
         self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
+        logging.info(f"Zakończono ekstrakcję klatek z filmu {Path(self.film.sciezka).name} ({liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
 
     def ekstrakcja_blad(self, komunikat_bledu):
         self.ekstrakcja_odwies();
@@ -352,6 +365,7 @@ class MyWindow:
         self.window.startEkstrakcji.setEnabled(False)
         self.window.wyszukiwanie.setEnabled(False)
         self.window.ekstrakcjaProgres.setVisible(True)
+        logging.info(f"Start ekstrakcji klatek z filmu {Path(self.film.sciezka).name} ({docelowa_liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
 
         #nowy wontek
         self.window.extraction_thread = ExtractionThread(
@@ -402,7 +416,7 @@ class MyWindow:
 
     def mesh_sukces(self, nazwa_modelu):
         self.window.startMeshowania.setEnabled(True)
-        QMessageBox.information(self.window, 'Sukces', f'Siatka stworzona! Model zapisano jako ???NIE WIEM??? {nazwa_modelu}')
+        QMessageBox.information(self.window, 'Sukces', f'Siatka stworzona! Model zapisano jako {nazwa_modelu}')
 
     def mesh_blad(self, komunikat_bledu):
         self.window.startMeshowania.setEnabled(True)

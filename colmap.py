@@ -27,6 +27,7 @@ chmury_dir.mkdir(exist_ok=True)
 zdjecia_hash.touch(exist_ok=True)
 logi.touch(exist_ok=True)
 
+
 podana_nazwa = None
 n_watkow = 8 # Ile wątków
 uzywacGPU = False # Czy robic z GPU
@@ -67,14 +68,14 @@ if(not "-f" in sys.argv and not '-r' in sys.argv):
   czy_zmieniono_zdjecia = (hash_nowy != hash_stary)
 
   #program juz sie wykonal wczesniej, caly, na tych zdjeciach
-  if(not czy_zmieniono_zdjecia):
-    print("Program już został wykonany na tych zdjeciach! Aby wymusic użyj opcji -f.")
-    sys.exit(0)
-  else: #jesli mamy nowe zdjecia to wyczyscmy katalogi
-    if output_dir.exists():
-      shutil.rmtree(output_dir)
-      output_dir.mkdir(exist_ok=True)
-      reco_dir.mkdir(exist_ok=True)
+#   if(not czy_zmieniono_zdjecia):
+#     print("Program już został wykonany na tych zdjeciach! Aby wymusic użyj opcji -f.")
+#     sys.exit(0)
+#   else: #jesli mamy nowe zdjecia to wyczyscmy katalogi
+#     if output_dir.exists():
+#       shutil.rmtree(output_dir)
+#       output_dir.mkdir(exist_ok=True)
+#       reco_dir.mkdir(exist_ok=True)
 
 if "-r" in sys.argv or "-f" in sys.argv:
   print("Podano opcję -r/-f! Usuwam starą rekonstrukcję.")
@@ -100,6 +101,7 @@ if "-l" in sys.argv:
 else:
   print("Nie podano poziomu zlozonosci. Przyjęto 0 (najszybszy).")
 if "-nthreads" in sys.argv:
+  print(f"Używamy {n_watkow} wątków!")
   ile_watkow_idx = sys.argv.index("-nthreads") + 1
   n_watkow = int(sys.argv[ile_watkow_idx])
 
@@ -192,12 +194,20 @@ def colmap():
 
 #depracted vvv
 #if not czy_istnieje_rekonstrukcja():
-colmap()
+if (undistort_dir / "pmvs").exists():
+    shutil.rmtree(undistort_dir / "pmvs")
+    logging.info(f"Usunięto katalog: {undistort_dir / "pmvs"}")
+
+if "-f" in sys.argv or czy_zmieniono_zdjecia:
+    colmap()
+else:
+    print(f"Rekonstrukcja na tych zdjęciach już istnieje, pomijam rzadką rekonstrukcję")
+    logging.info(f"Rekonstrukcja na tych zdjęciach już istnieje, pomijam rzadką rekonstrukcję")
 #depracted vvv
 #zaladowana_rekonstrukcja = pycolmap.Reconstruction(output_dir / "reconstructions")
 
-#odzniekształcanie (undistort lol) zdjęć i zapisywanie ich i innych rzeczy
-#(cale drzewo katalogowe) odpowiednio dla PMVS :D
+# odzniekształcanie (undistort lol) zdjęć i zapisywanie ich i innych rzeczy
+# (cale drzewo katalogowe) odpowiednio dla PMVS :D
 pycolmap.undistort_images(
     output_path=undistort_dir,
     input_path=output_dir/"0",
@@ -205,54 +215,304 @@ pycolmap.undistort_images(
     output_type='PMVS',
 )
 
-#i do pmvs2
+## CMVS+PMVS2
 import subprocess
 import os
-logging.info(f"Uruchomienie PMVS2")
+logging.info(f"Uruchomienie procesu gęstej rekonstrukcji")
 
-#najpierw przerobic plik option-all na takie opcje jakie my chcemy
-#po prostu zczytac kazda linie i jesli pierwszy ciag znakow nie jest kluczem w slowniku
-#to przepisac, inaczej nowa wartosc. Działa, bo on domyslnie te wartosci co nas interesuja tam ma juz
-with open(str(undistort_dir / "pmvs/opcje.txt"), 'w') as nowy:
-  with open(str(undistort_dir / "pmvs/option-all"), 'r') as stary:
-      for line in stary:
-        parts = line.split()
-        if not parts:
-            nowy.write(line)
-            continue
-        haslo = parts[0]
-        if haslo in configs["Options"][zlozonosc]:
-            nowy.write(f"{haslo} {configs['Options'][zlozonosc][haslo]}\n")
-        else:
-            nowy.write(line)
+uzywacCMVS = False
 
+# Liczba zdjęć do decyzji o użyciu CMVS
+liczba_zdjec = len(list(zdjecia_dir.glob("*"))) if zdjecia_dir.exists() else 0
+if liczba_zdjec >= 50:
+    uzywacCMVS = True
+    logging.info(f"Ustawiono tryb CMVS+PMVS")
+else:
+    logging.info(f"Ustawiono tryb PMVS")
 
+if uzywacCMVS:
+    logging.info(f"Użycie CMVS+PMVS2 dla {liczba_zdjec} zdjęć")
+    
+    pmvs_dir = undistort_dir / "pmvs"
+    cmvs_exec = dependencies_dir / "cmvs"
+    
+    # Parametry CMVS z options.yaml
+    cmvs_images_per_cluster = configs["Options"][zlozonosc]['cmvs_images_per_cluster']
+    cmvs_levels = configs["Options"][zlozonosc]['cmvs_levels']
+
+    logging.info(f"Uruchamianie CMVS: {[
+            str(cmvs_exec),
+            str(pmvs_dir) + "/",
+            str(cmvs_images_per_cluster),
+            str(cmvs_levels),
+        ]}")
+    
+    try:
+        subprocess.run([
+            str(cmvs_exec),
+            str(pmvs_dir) + "/",
+            str(cmvs_images_per_cluster),
+            str(cmvs_levels),
+        ], check=True)
+        logging.info("CMVS zakończony pomyślnie")
+
+        
+    except subprocess.CalledProcessError as e:
+        logging.error(f"[CMVS] Błąd: {e.stderr}")
+        # Nie pykło robimy sam PMVS
+        uzywacCMVS = False
+        logging.info("Przełączam na tryb bez CMVS")
+    
+    genOption_exec = dependencies_dir / "genOption"
+    
+    if genOption_exec.exists():
+        try:
+            subprocess.run([
+                str(genOption_exec),
+                str(pmvs_dir) + "/",
+            ], check=True)
+            logging.info("Wygenerowano pliki opcji dla klastrów")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"genOption błąd: {e.stderr}")
+            uzywacCMVS = False
+    else:
+        logging.warning("Nie znaleziono genOption, kontynuuję z istniejącymi plikami opcji")
+
+# Przygotowanie plików opcji
+if uzywacCMVS:
+    # Potrzebne pliki opcji dla każdego klastra
+    option_files = list(pmvs_dir.glob("option-0*"))
+    if not option_files:
+        logging.warning("Nie znaleziono plików opcji CMVS, przęłączanie na sam PMVS")
+        uzywacCMVS = False
+
+if not uzywacCMVS:
+    logging.info(f"Użycie tylko PMVS2")
+
+    with open(str(undistort_dir / "pmvs/opcje.txt"), 'w') as nowy:
+        with open(str(undistort_dir / "pmvs/option-all"), 'r') as stary:
+            for line in stary:
+                parts = line.split()
+                if not parts:
+                    nowy.write(line)
+                    continue
+                haslo = parts[0]
+                if haslo in configs["Options"][zlozonosc]:
+                    nowy.write(f"{haslo} {configs['Options'][zlozonosc][haslo]}\n")
+                else:
+                    nowy.write(line)
+    
+    option_files = [undistort_dir / "pmvs/opcje.txt"]
+
+for option_file_path in option_files:
+    with open(str(option_file_path), 'r') as f:
+        lines = f.readlines()
+    
+    with open(str(option_file_path), 'w') as f:
+        for line in lines:
+            parts = line.split()
+            if not parts:
+                f.write(line)
+                continue
+            haslo = parts[0]
+            if haslo in configs["Options"][zlozonosc]:
+                f.write(f"{haslo} {configs['Options'][zlozonosc][haslo]}\n")
+            else:
+                f.write(line)
+
+# Uruchom PMVS2
 pmvs2_exec = dependencies_dir / "pmvs2"
+pmvs_dir = undistort_dir / "pmvs"
 prefix = undistort_dir / "pmvs/" #colmap wyżej powinien go stworzyc
 option_file = "opcje.txt" # <- wewnatrz /undistort/pmvs 
 #dam go tu bo idk gdzie, zeby zobaczyc jakie sa opjce w pmvs2
 #wystarczy uruchomic go i wyswietli ładnie :)
-print(pmvs2_exec, prefix, option_file)
 
-#taka komenda np wlaczylem:
-#./dependencies/CMVS-PMVS/program/OutputLinux/main/pmvs2 ./undistort/pmvs/ ./pmvs_options.txt
-#program, „prefix” czyli katalog ten pmvs i potem opcje ktore maja swoj format taki prosty
-#ale musza byc wewnatrz folderu pmvs
-subprocess.run(
-  [str(pmvs2_exec), str(prefix)+"/", option_file], 
-  check=True
-  )
-#w ./undistort/pmvs/models wypluje model o nazwie <nazwa pliku z opcjami>.ply xD
+if uzywacCMVS:
+    # Odpalamy PMVS dla każdego klastra
+    logging.info(f"Uruchamianie PMVS2 na {len(option_files)} klastrach")
+    for option_file_path in option_files:
+        option_file_name = option_file_path.name
+        logging.info(f"Przetwarzanie klastra: {option_file_name}")
+        
+        try:
+            subprocess.run(
+            [str(pmvs2_exec), str(prefix)+"/", option_file_name], 
+            check=True
+            )
+            logging.info(f"Klaster {option_file_name} zakończony")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"PMVS2 błąd dla {option_file_name}: {e.stderr}")
+    
+    # Łączenie modeli
+    models_dir = pmvs_dir / "models"
+    if models_dir.exists():
+        ply_files = list(models_dir.glob("*.ply"))
+        
+        if len(ply_files) > 1:
+            logging.info(f"Łączenie {len(ply_files)} modeli z klastrów")
+            
+            # Jakiś merger z chata
+            def combine_ply_files(input_files, output_file):
+              if not input_files:
+                  return
+              
+              # Analizuj format z pierwszego pliku
+              vertex_format = []  # Lista tuple (typ, nazwa)
+              has_colors = False
+              has_normals = False
+              has_quality = False
+              
+              with open(input_files[0], 'r') as f:
+                  for line in f:
+                      line = line.strip()
+                      if line.startswith('property'):
+                          parts = line.split()
+                          if len(parts) >= 3:
+                              prop_type = parts[1]
+                              prop_name = parts[2]
+                              vertex_format.append((prop_type, prop_name))
+                              
+                              if 'red' in prop_name or 'green' in prop_name or 'blue' in prop_name:
+                                  has_colors = True
+                              elif 'nx' in prop_name or 'ny' in prop_name or 'nz' in prop_name:
+                                  has_normals = True
+                              elif 'quality' in prop_name:
+                                  has_quality = True
+                      elif line == 'end_header':
+                          break
+              
+              # Zbierz wszystkie dane
+              all_vertices = []  # Lista list wartości
+              all_faces = []     # Lista krotek (3 indeksy)
+              vertex_offset = 0
+              
+              for ply_file in input_files:
+                  print(f"Łączenie: {ply_file.name}")
+                  
+                  with open(ply_file, 'r') as f:
+                      lines = f.readlines()
+                  
+                  # Znajdź nagłówek i dane
+                  header_end = 0
+                  vertex_count = 0
+                  face_count = 0
+                  
+                  for i, line in enumerate(lines):
+                      if line.startswith('element vertex'):
+                          vertex_count = int(line.split()[-1])
+                      elif line.startswith('element face'):
+                          face_count = int(line.split()[-1])
+                      elif line.strip() == 'end_header':
+                          header_end = i + 1
+                          break
+                  
+                  # Wczytaj wierzchołki
+                  vertex_start = header_end
+                  for i in range(vertex_start, vertex_start + vertex_count):
+                      if i < len(lines):
+                          values = lines[i].strip().split()
+                          # Konwertuj na odpowiednie typy
+                          converted = []
+                          for j, (prop_type, _) in enumerate(vertex_format):
+                              if j < len(values):
+                                  if prop_type in ['float', 'double']:
+                                      converted.append(float(values[j]))
+                                  elif prop_type in ['int', 'uchar', 'uint']:
+                                      converted.append(int(values[j]))
+                                  else:
+                                      converted.append(values[j])
+                              else:
+                                  # Domyślne wartości jeśli brakuje
+                                  if prop_type in ['float', 'double']:
+                                      converted.append(0.0)
+                                  elif prop_type in ['int', 'uchar', 'uint']:
+                                      converted.append(0)
+                                  else:
+                                      converted.append('0')
+                          all_vertices.append(converted)
+                  
+                  # Wczytaj ściany
+                  face_start = vertex_start + vertex_count
+                  for i in range(face_start, face_start + face_count):
+                      if i < len(lines):
+                          parts = lines[i].strip().split()
+                          if len(parts) >= 4 and parts[0] == '3':
+                              try:
+                                  v1 = int(parts[1]) + vertex_offset
+                                  v2 = int(parts[2]) + vertex_offset
+                                  v3 = int(parts[3]) + vertex_offset
+                                  all_faces.append((v1, v2, v3))
+                              except ValueError:
+                                  continue  # Pomiń nieprawidłowe ściany
+                  
+                  vertex_offset += vertex_count
+              
+              # Zapisz połączony plik
+              with open(output_file, 'w') as f:
+                  f.write("ply\n")
+                  f.write("format ascii 1.0\n")
+                  f.write(f"element vertex {len(all_vertices)}\n")
+                  
+                  # Zapisz format wierzchołków
+                  for prop_type, prop_name in vertex_format:
+                      f.write(f"property {prop_type} {prop_name}\n")
+                  
+                  f.write(f"element face {len(all_faces)}\n")
+                  f.write("property list uchar int vertex_index\n")
+                  f.write("end_header\n")
+                  
+                  # Zapisz wierzchołki
+                  for vertex in all_vertices:
+                      f.write(" ".join(str(v) for v in vertex) + "\n")
+                  
+                  # Zapisz ściany
+                  for face in all_faces:
+                      f.write(f"3 {face[0]} {face[1]} {face[2]}\n")
+              
+              print(f"Połączono {len(input_files)} plików")
+              print(f"Łącznie wierzchołków: {len(all_vertices)}")
+              print(f"Łącznie ścian: {len(all_faces)}")
+            
+            # Połącz wszystkie PLY
+            combined_ply = models_dir / "combined.ply"
+            combine_ply_files(ply_files, combined_ply)
+            
+            # Użyj połączonego modelu jako wynik
+            stara_nazwa = "combined.ply"
+        else:
+            stara_nazwa = option_file + ".ply"
+    else:
+        stara_nazwa = option_file + ".ply"
+else:
+    option_file = "opcje.txt"
+    logging.info(f"Uruchamianie PMVS2 z pojedynczym plikiem opcji")
+    
+    try:
+        subprocess.run(
+            [str(pmvs2_exec), str(pmvs_dir)+"/", option_file], 
+            check=True
+            )
+    except subprocess.CalledProcessError as e:
+        logging.error(f"PMVS2 błąd: {e.stderr}")
+        raise
+    
+    stara_nazwa = option_file + ".ply"
 
-if(podana_nazwa != None):
-  stara_nazwa = option_file + ".ply"
-  nowa_nazwa = Path(podana_nazwa).stem + ".ply"
-  stary_plik = undistort_dir / "pmvs/models/" / stara_nazwa
-  nowy_plik = chmury_dir / nowa_nazwa
-  shutil.move(str(stary_plik), str(nowy_plik))
+# Przenoszenie pliku do chmurek
+if podana_nazwa is not None:
+    stary_plik = pmvs_dir / "models" / stara_nazwa
+    
+    if stary_plik.exists():
+        nowa_nazwa = Path(podana_nazwa).stem + ".ply"
+        nowy_plik = chmury_dir / nowa_nazwa
+        shutil.move(str(stary_plik), str(nowy_plik))
+        logging.info(f"Przeniesiono model do: {nowy_plik}")
+    else:
+        logging.warning(f"Plik wynikowy nie istnieje: {stary_plik}")
 
-#program sie cały wykonał, zmieniamy hash
+#program się cały wykonał, zmieniamy hash
 with open(str(zdjecia_hash), "w") as f:
-  f.write(hash_nowy)
+    f.write(hash_nowy)
 
-logging.info(f"Koniec")
+logging.info(f"Koniec procesu gęstej rekonstrukcji")
