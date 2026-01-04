@@ -11,8 +11,7 @@ Options:
     quad: 2.5
     maxAngle: 10
     csize: 3
-    cmvs_images_per_cluster: 20 #dla cmvs
-    cmvs_levels: 1
+    cmvs_images_per_cluster: 100
   - max_features: 8192 # do sifta, srednie opcje
     num_nearest_neighbors: 5 # do slownikowego laczenia v
     num_checks: 200
@@ -24,8 +23,7 @@ Options:
     quad: 2.5
     maxAngle: 10
     csize: 2
-    cmvs_images_per_cluster: 100 #dla cmvs
-    cmvs_levels: 1
+    cmvs_images_per_cluster: 50
   - max_features: 16384 # do sifta, bez gpu nie odpalaj :czacha czacha czacha: https://www.youtube.com/watch?v=_36yNWw_07g
     num_nearest_neighbors: 10 # do slownikowego laczenia v
     num_checks: 200
@@ -37,5 +35,4 @@ Options:
     quad: 3 #tutaj i z max angle moze poskutkowac zbyt zaszumionym, ale to trzeba sprawdzic
     maxAngle: 7
     csize: 1
-    cmvs_images_per_cluster: 20 #dla cmvs
-    cmvs_levels: 1
+    cmvs_images_per_cluster: 20

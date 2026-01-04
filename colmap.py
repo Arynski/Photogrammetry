@@ -238,7 +238,7 @@ if uzywacCMVS:
     
     # Parametry CMVS z options.yaml
     cmvs_images_per_cluster = configs["Options"][zlozonosc]['cmvs_images_per_cluster']
-    cmvs_levels = configs["Options"][zlozonosc]['cmvs_levels']
+    cmvs_levels = configs["Options"][zlozonosc]['level']
 
     logging.info(f"Uruchamianie CMVS: {[
             str(cmvs_exec),
