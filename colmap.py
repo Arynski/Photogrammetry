@@ -118,6 +118,7 @@ if "-nthreads" in sys.argv:
 #    return False
 
 def colmap():
+
   logging.info(f"Poczatek colmapowania, plik {podana_nazwa}")
 
   reader_opts = pycolmap.ImageReaderOptions(
@@ -199,6 +200,12 @@ if (undistort_dir / "pmvs").exists():
     logging.info(f"Usunięto katalog: {undistort_dir / "pmvs"}")
 
 if "-f" in sys.argv or czy_zmieniono_zdjecia:
+    logging.info(f"Czyszczenie katalogu roboczego colmap dla nowej rekonstrukcji")
+    if (output_dir).exists():
+        shutil.rmtree(output_dir)
+        output_dir.mkdir(exist_ok=True)
+        reco_dir.mkdir(exist_ok=True)
+    logging.info(f"Wyczyszczono katalog roboczy")
     colmap()
 else:
     print(f"Rekonstrukcja na tych zdjęciach już istnieje, pomijam rzadką rekonstrukcję")

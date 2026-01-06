@@ -14,12 +14,19 @@ parser.add_argument("filename", help="nazwa pliku PLY (sam plik, bez ścieżki)"
 parser.add_argument("method", help="metoda meshowania (0=ball pivoting, 1=poisson, 2=alpha shapes)")
 args = parser.parse_args()
 
-katalog = Path(__file__).resolve().parent
-model = (katalog / "chmury" / args.filename).resolve()
 nazwa = Path(args.filename).stem.split('.')[0]
-wyjscie = katalog / "chmury" / f"{nazwa}.obj"
-wyjscie_kolor_obj = katalog / "chmury" / f"{nazwa}_kolor.obj"
-wyjscie_kolor_ply = katalog / "chmury" / f"{nazwa}_kolor.ply"
+katalog = Path(__file__).resolve().parent
+katalog_chmury = (katalog / "chmury").resolve()
+katalog_siatki = (katalog / "siatki").resolve()
+katalog_nazwa = (katalog / "siatki" / f"{nazwa}").resolve()
+model = (katalog / "chmury" / args.filename).resolve()
+wyjscie = katalog_nazwa / f"{nazwa}.obj"
+wyjscie_kolor_obj = katalog_nazwa / f"{nazwa}_kolor.obj"
+wyjscie_kolor_ply = katalog_nazwa / f"{nazwa}_kolor.ply"
+
+katalog_chmury.mkdir(exist_ok=True)
+katalog_siatki.mkdir(exist_ok=True)
+katalog_nazwa.mkdir(exist_ok=True)
 
 metody = ['ball pivoting', 'poisson', 'alpha shapes']
 print(f"Wybrano metodę: {metody[int(args.method)]}")
@@ -36,7 +43,7 @@ czegoUzywac = int(args.method)
 ##wywalenie punktow z quality < cutoff
 quality_cutoff = 0.7
 
-wyjscieJakosciowe = katalog / "chmury" / f"{nazwa}_quality.ply"
+wyjscieJakosciowe = katalog_nazwa / f"{nazwa}_quality.ply"
 
 # Wczytaj PLY (header + dane)
 with open(model) as f:
