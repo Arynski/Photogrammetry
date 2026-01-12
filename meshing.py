@@ -15,10 +15,17 @@ parser.add_argument("method", help="metoda meshowania (0=ball pivoting, 1=poisso
 args = parser.parse_args()
 
 nazwa = Path(args.filename).stem.split('.')[0]
+czegoUzywac = int(args.method)
+if(czegoUzywac == 0):
+    metoda = "ballpivoting"
+elif(czegoUzywac == 2):
+    metoda = "alphashapes"
+else:
+    metoda = "poisson"
 katalog = Path(__file__).resolve().parent
 katalog_chmury = (katalog / "chmury").resolve()
 katalog_siatki = (katalog / "siatki").resolve()
-katalog_nazwa = (katalog / "siatki" / f"{nazwa}").resolve()
+katalog_nazwa = (katalog / "siatki" / f"{nazwa}-{metoda}").resolve()
 model = (katalog / "chmury" / args.filename).resolve()
 wyjscie = katalog_nazwa / f"{nazwa}.obj"
 wyjscie_kolor_obj = katalog_nazwa / f"{nazwa}_kolor.obj"
@@ -35,7 +42,6 @@ if not model.exists():
     sys.exit(1)
 else:
     print(f"Używam pliku: {model}")
-czegoUzywac = int(args.method)
 
 
 ###wlasciwy kod

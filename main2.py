@@ -143,23 +143,33 @@ class ColmapThread(QThread):
     err = Signal(str)
     log_signal = Signal(str)
 
-    def __init__(self, nazwa_modelu, ile_watkow, opcje_poziom):
+    def __init__(self, nazwa_modelu, ile_watkow, opcje_poziom, force):
         super().__init__()
         self.nazwa_modelu = nazwa_modelu
         self.ile_watkow = ile_watkow
         self.opcje_poziom = opcje_poziom
+        self.force = force
 
     def run(self):
         import subprocess
         try:
-            process = subprocess.Popen(
-                # ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom), '-f'],
-                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom)],
+            if(self.force is True):
+                print(f"Colmap działa w trybie wymuszonym")
+                process = subprocess.Popen(
+                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom), '-f'],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1
-            )
+                ) 
+            else:
+                process = subprocess.Popen(
+                    ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1
+                )
             for line in process.stdout:
                 line = line.strip()
                 if line:
@@ -408,7 +418,7 @@ class MyWindow:
         self.window.startRekonstrukcji.setEnabled(False)
 
         # colmap.py w osobnym wątku
-        self.colmap_thread = ColmapThread(nazwa_modelu, self.window.wybierzLiczbeWatkow.value(), opcje)
+        self.colmap_thread = ColmapThread(nazwa_modelu, self.window.wybierzLiczbeWatkow.value(), opcje, self.window.wymusRekonstrukcje.isChecked())
         self.colmap_thread.koniec.connect(self.colmap_sukces)
         self.colmap_thread.err.connect(self.colmap_blad)
         self.colmap_thread.log_signal.connect(self.log)

@@ -1,6 +1,6 @@
 ---
 Options:
-  - max_features: 1500 # do sifta, najszybsze opcje
+  - max_features: 8192 # do sifta, najszybsze opcje
     num_nearest_neighbors: 5 # do slownikowego laczenia v
     num_checks: 150
     ba_global_max_num_iterations: 20 # do rekonstrukcji
@@ -11,7 +11,7 @@ Options:
     quad: 2.5
     maxAngle: 10
     csize: 3
-    cmvs_images_per_cluster: 100
+    cmvs_images_per_cluster: 20
   - max_features: 8192 # do sifta, srednie opcje
     num_nearest_neighbors: 5 # do slownikowego laczenia v
     num_checks: 200
@@ -23,7 +23,7 @@ Options:
     quad: 2.5
     maxAngle: 10
     csize: 2
-    cmvs_images_per_cluster: 50
+    cmvs_images_per_cluster: 20
   - max_features: 16384 # do sifta, bez gpu nie odpalaj :czacha czacha czacha: https://www.youtube.com/watch?v=_36yNWw_07g
     num_nearest_neighbors: 10 # do slownikowego laczenia v
     num_checks: 200

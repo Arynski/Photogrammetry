@@ -135,21 +135,20 @@ def colmap():
       num_threads=n_watkow,
       use_gpu=uzywacGPU,
       max_num_features = configs["Options"][zlozonosc]['max_features'],
-      max_image_size=10000 #NIE SKALUJ
+      max_image_size=10000 #NIE SKALUJ,
+      guided_matching = True
     )
   )
   logging.info("wyekstraktowano")
 
-#   Matching ficzerów
-#   pycolmap.match_sequential(
-#    database_path = output_dir / "bazunia.db",
-#    sift_options=pycolmap.SiftMatchingOptions(
-#      num_threads=n_watkow,
-#      use_gpu=uzywacGPU,
-#      guided_matching = True,
-     
-#    )
-#   )
+  # Matching ficzerów
+  #pycolmap.match_sequential(
+  #  database_path = output_dir / "bazunia.db",
+  #  sift_options=pycolmap.SiftMatchingOptions(
+  #    num_threads=n_watkow,
+  #    use_gpu=uzywacGPU
+  #  )
+  #)
 
   #uzywajac drzewa
   pycolmap.match_vocabtree(
