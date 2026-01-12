@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1076</width>
-    <height>526</height>
+    <height>528</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -269,6 +269,13 @@
                 <widget class="QCheckBox" name="wymusRekonstrukcje">
                  <property name="text">
                   <string>Wymuś nową rekonstrukcję</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="rekonstrukcjaStatusLabel">
+                 <property name="text">
+                  <string/>
                  </property>
                 </widget>
                </item>

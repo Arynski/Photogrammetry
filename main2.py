@@ -1,5 +1,6 @@
 import sys
 import cv2 as cv
+import time
 import os
 import subprocess
 import glob
@@ -227,7 +228,11 @@ class MyWindow:
         self.window = loader.load(ui_file)
         ui_file.close()
 
+        # timer rekonstrukcji
+        self.start_time = None
+
         #ustawienie pewnych rzeczy
+        self.window.rekonstrukcjaStatusLabel.setHidden(True)
         self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
         self.window.wyborOpcji.clear()
         self.window.wyborOpcji.addItem("Największa wydajność", 0)
@@ -270,6 +275,43 @@ class MyWindow:
         self.window.logWindow.verticalScrollBar().setValue(
             self.window.logWindow.verticalScrollBar().maximum()
         )
+        # Logika wyświetlania statusu rekonstrukcji
+        if("Feature extraction" in message):
+            self.start_time = time.time()
+            self.window.rekonstrukcjaStatusLabel.setHidden(False)
+            self.window.rekonstrukcjaStatusLabel.setText("Status: Ekstrakcja detali ze zdjęć")
+        elif("Feature matching" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Matching detali ze zdjęć")
+        elif("Indexing image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Indeksowanie zdjęć")
+        elif("Matching image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Dopasowywanie zdjęć do drzewa")
+        elif("Registering image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Tworzenie rzadkiej rekonstrukcji ze zdjęć")
+        elif("Retriangulation and Global bundle adjustment" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Retriangulacja pozycji kamery")
+        elif("Undistorting image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Usuwanie zniekształceń ze zdjęć")
+        elif("Reading bundle..." in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Dzielenie zdjęć na klastry do gęstej rekonstrukcji")
+        elif("Summary of specified options" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Proces gęstej rekonstrukcji")
+        elif("Zrekonstruowano coś" in message):
+            end_time = time.time() - self.start_time
+            if end_time < 60:
+                wiadomosc = f"{end_time:.2f}s"
+            elif end_time < 3600:
+                minuty = int(end_time // 60)
+                sekundy = end_time % 60
+                wiadomosc = f"{minuty}min {int(sekundy)}s"
+            else:
+                godziny = int(end_time // 3600)
+                minuty = int((end_time % 3600) // 60)
+                sekundy = end_time % 60
+                wiadomosc = f"{godziny}h {minuty}min {int(sekundy)}s"
+
+            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Rekonstrukcja zakończona - upłynęło {wiadomosc}")
+
         
     def przegladaj_film(self):
         film_sciezka, _ = QFileDialog.getOpenFileName(
