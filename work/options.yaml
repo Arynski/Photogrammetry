@@ -11,7 +11,7 @@ Options:
     quad: 2.5
     maxAngle: 10
     csize: 3
-    cmvs_images_per_cluster: 20
+    cmvs_images_per_cluster: 50
   - max_features: 8192 # do sifta, srednie opcje
     num_nearest_neighbors: 5 # do slownikowego laczenia v
     num_checks: 200

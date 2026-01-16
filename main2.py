@@ -23,27 +23,31 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s: %(message)s'
 )
 
-#zaklada ze dostalo docelowa_rozdzielczosc w takiej samej orientacji (pion/poziom) co filmik (a tak jest w combo)
+# zaklada ze dostalo docelowa_rozdzielczosc w takiej samej orientacji (pion/poziom) co filmik (a tak jest w combo)
+
+
 def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=None, log_callback=None, progress_callback=None):
     print(f'Otwieranie filmu: {film_info.sciezka}')
     if log_callback:
         log_callback(f'Otwieranie filmu: {film_info.sciezka}')
-    
+
     film = cv.VideoCapture(film_info.sciezka)
-    
+
     # Pobierz całkowitą liczbę klatek w filmie
     calkowita_liczba_klatek = film_info.liczba_klatek
     fps = film_info.fps
-    
+
     # Oblicz interwał co ile klatek zapisywać
     if docelowa_liczba_klatek >= calkowita_liczba_klatek:
         interwal = 1  # Zapisz wszystkie klatki
     else:
         interwal = max(1, calkowita_liczba_klatek // docelowa_liczba_klatek)
-    
-    print(f'Film ma {calkowita_liczba_klatek} klatek, ekstrakcja co {interwal} klatki')
+
+    print(
+        f'Film ma {calkowita_liczba_klatek} klatek, ekstrakcja co {interwal} klatki')
     if log_callback:
-        log_callback(f'Film ma {calkowita_liczba_klatek} klatek, ekstrakcja co {interwal} klatki')
+        log_callback(
+            f'Film ma {calkowita_liczba_klatek} klatek, ekstrakcja co {interwal} klatki')
     print(f'Docelowa liczba klatek: {docelowa_liczba_klatek}')
     if log_callback:
         log_callback(f'Docelowa liczba klatek: {docelowa_liczba_klatek}')
@@ -55,17 +59,18 @@ def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=N
     os.makedirs('work/zdjecia', exist_ok=True)
     wyczyscZdjecia(log_callback)
 
-    while(film.isOpened()):
+    while (film.isOpened()):
         flag, klatka = film.read()
         if flag == False:
             break
         h, w, _ = klatka.shape
         wymiary = (w, h)
-        if(docelowa_rozdzielczosc): # okreslenie jakie wymiary (pionowe czy poziome)
-            wymiary = docelowa_rozdzielczosc; #to powinno byc zgodne z wymiarami filmu, bo tak sa zapisywane do combo
+        if (docelowa_rozdzielczosc):  # okreslenie jakie wymiary (pionowe czy poziome)
+            # to powinno byc zgodne z wymiarami filmu, bo tak sa zapisywane do combo
+            wymiary = docelowa_rozdzielczosc
 
-        #faktyczne pobranie klatki
-        if klatki % interwal == 0 and zapisane_klatki < docelowa_liczba_klatek:  
+        # faktyczne pobranie klatki
+        if klatki % interwal == 0 and zapisane_klatki < docelowa_liczba_klatek:
             resized_img = cv.resize(klatka, wymiary)
             cv.imwrite(f'./work/zdjecia/img_{i:04d}.jpg', resized_img)
             print(f'Zapisano ./work/zdjecia/img_{i:04d}.jpg')
@@ -73,19 +78,21 @@ def ekstrakcjaKlatek(film_info, docelowa_liczba_klatek, docelowa_rozdzielczosc=N
                 log_callback(f'Zapisano ./work/zdjecia/img_{i:04d}.jpg')
             i += 1
             zapisane_klatki += 1
-            
+
         klatki += 1
 
-        #wysyla jaki procent zrobiony
-        if(progress_callback):
-            progress_callback(int((zapisane_klatki*100)/docelowa_liczba_klatek)) #w procentach
-        
+        # wysyla jaki procent zrobiony
+        if (progress_callback):
+            progress_callback(
+                int((zapisane_klatki*100)/docelowa_liczba_klatek))  # w procentach
+
         # Przerwij jeśli osiągnięto docelową liczbę klatek
         if zapisane_klatki >= docelowa_liczba_klatek:
             break
-            
+
     film.release()
     return zapisane_klatki
+
 
 def wyczyscZdjecia(log_callback=None):
     files = glob.glob('work/zdjecia/*')
@@ -103,7 +110,8 @@ def wyczyscZdjecia(log_callback=None):
             nieusuniete += 1
     print(f'Usunięto {pomyslnieusuniete}, nie udało się usunąć {nieusuniete}')
     if log_callback:
-        log_callback(f'Usunięto {pomyslnieusuniete}, nie udało się usunąć {nieusuniete}')
+        log_callback(
+            f'Usunięto {pomyslnieusuniete}, nie udało się usunąć {nieusuniete}')
 
 
 class FilmInfo:
@@ -113,6 +121,7 @@ class FilmInfo:
         self.wysokosc = wysokosc
         self.liczba_klatek = liczba_klatek
         self.fps = fps
+
 
 class ExtractionThread(QThread):
     progres = Signal(int)
@@ -129,8 +138,8 @@ class ExtractionThread(QThread):
     def run(self):
         try:
             wyekstraktowane_klatki = ekstrakcjaKlatek(
-                self.film_info, 
-                self.docelowa_liczba_klatek, 
+                self.film_info,
+                self.docelowa_liczba_klatek,
                 self.docelowa_rozdzielczosc,
                 log_callback=self.log_signal.emit,
                 progress_callback=self.progres.emit
@@ -139,38 +148,40 @@ class ExtractionThread(QThread):
         except Exception as e:
             self.err.emit(str(e))
 
+
 class ColmapThread(QThread):
     koniec = Signal(str)
     err = Signal(str)
     log_signal = Signal(str)
 
-    def __init__(self, nazwa_modelu, ile_watkow, opcje_poziom, force):
+    def __init__(self, nazwa_modelu, ile_watkow, opcje_poziom, force, seq):
         super().__init__()
         self.nazwa_modelu = nazwa_modelu
         self.ile_watkow = ile_watkow
         self.opcje_poziom = opcje_poziom
         self.force = force
+        self.seq = seq
 
     def run(self):
         import subprocess
         try:
-            if(self.force is True):
+            cmd_args = ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads',
+                        str(self.ile_watkow), '-l', str(self.opcje_poziom)]
+            if (self.force is True):
                 print(f"Colmap działa w trybie wymuszonym")
-                process = subprocess.Popen(
-                ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom), '-f'],
+                cmd_args.append('-f')
+            if (self.seq is True):
+                print(f"Używam matchowania sekwencyjnego")
+                cmd_args.append('-seq')
+
+            process = subprocess.Popen(
+                cmd_args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1
-                ) 
-            else:
-                process = subprocess.Popen(
-                    ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads', str(self.ile_watkow), '-l', str(self.opcje_poziom)],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1
-                )
+            )
+
             for line in process.stdout:
                 line = line.strip()
                 if line:
@@ -184,6 +195,7 @@ class ColmapThread(QThread):
             self.err.emit(str(e))
         except Exception as e:
             self.err.emit(str(e))
+
 
 class MeshingThread(QThread):
     koniec = Signal(str)
@@ -219,6 +231,7 @@ class MeshingThread(QThread):
         except Exception as e:
             self.err.emit(str(e))
 
+
 class MyWindow:
     def __init__(self):
         # wczytanie .ui
@@ -231,27 +244,28 @@ class MyWindow:
         # timer rekonstrukcji
         self.start_time = None
 
-        #ustawienie pewnych rzeczy
+        # ustawienie pewnych rzeczy
         self.window.rekonstrukcjaStatusLabel.setHidden(True)
-        self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
+        self.window.rekonstrukcjaLabel2.setText(
+            f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
         self.window.wyborOpcji.clear()
         self.window.wyborOpcji.addItem("Największa wydajność", 0)
         self.window.wyborOpcji.addItem("Najlepsza jakość", 2)
         self.window.wyborOpcji.addItem("Połączenie obu światów", 1)
         self.window.wyborOpcji.addItem("Własne ustawienia", 3)
-        #0=ball pivoting, 1=poisson, 2=alpha shapes
+        # 0=ball pivoting, 1=poisson, 2=alpha shapes
         self.window.metodaWybor.clear()
         self.window.metodaWybor.addItem("Ball pivoting", 0)
         self.window.metodaWybor.addItem("Poisson", 1)
         self.window.metodaWybor.addItem("Alpha shapes", 2)
         watki = QThread.idealThreadCount()
-        if(watki < 1):
+        if (watki < 1):
             watki = 1
         self.window.wybierzLiczbeWatkow.setRange(1, watki)
-        self.window.wybierzLiczbeWatkow.setValue(watki)  #ustawi na maks
-        
-        #atrybuty
-        self.film = None;
+        self.window.wybierzLiczbeWatkow.setValue(watki)  # ustawi na maks
+
+        # atrybuty
+        self.film = None
         self.typowe_rozdzielczosci = [
             (3840, 2160, "4K (3840x2160)"),
             (2560, 1440, "1440p (2560x1440)"),
@@ -276,27 +290,36 @@ class MyWindow:
             self.window.logWindow.verticalScrollBar().maximum()
         )
         # Logika wyświetlania statusu rekonstrukcji
-        if("Feature extraction" in message):
+        if ("Feature extraction" in message):
             self.start_time = time.time()
             self.window.rekonstrukcjaStatusLabel.setHidden(False)
-            self.window.rekonstrukcjaStatusLabel.setText("Status: Ekstrakcja detali ze zdjęć")
-        elif("Feature matching" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Matching detali ze zdjęć")
-        elif("Indexing image" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Indeksowanie zdjęć")
-        elif("Matching image" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Dopasowywanie zdjęć do drzewa")
-        elif("Registering image" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Tworzenie rzadkiej rekonstrukcji ze zdjęć")
-        elif("Retriangulation and Global bundle adjustment" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Retriangulacja pozycji kamery")
-        elif("Undistorting image" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Usuwanie zniekształceń ze zdjęć")
-        elif("Reading bundle..." in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Dzielenie zdjęć na klastry do gęstej rekonstrukcji")
-        elif("Summary of specified options" in message):
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Proces gęstej rekonstrukcji")
-        elif("Zrekonstruowano coś" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                "Status: Ekstrakcja detali ze zdjęć")
+        elif ("Feature matching" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Matching detali ze zdjęć")
+        elif ("Indexing image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Indeksowanie zdjęć")
+        elif ("Matching image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Dopasowywanie zdjęć")
+        elif ("Registering image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Tworzenie rzadkiej rekonstrukcji ze zdjęć")
+        elif ("Retriangulation and Global bundle adjustment" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Retriangulacja pozycji kamery")
+        elif ("Undistorting image" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Usuwanie zniekształceń ze zdjęć")
+        elif ("Reading bundle..." in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Dzielenie zdjęć na klastry do gęstej rekonstrukcji")
+        elif ("Summary of specified options" in message):
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Proces gęstej rekonstrukcji")
+        elif ("Zrekonstruowano coś" in message):
             end_time = time.time() - self.start_time
             if end_time < 60:
                 wiadomosc = f"{end_time:.2f}s"
@@ -310,9 +333,9 @@ class MyWindow:
                 sekundy = end_time % 60
                 wiadomosc = f"{godziny}h {minuty}min {int(sekundy)}s"
 
-            self.window.rekonstrukcjaStatusLabel.setText(f"Status: Rekonstrukcja zakończona - upłynęło {wiadomosc}")
+            self.window.rekonstrukcjaStatusLabel.setText(
+                f"Status: Rekonstrukcja zakończona - upłynęło {wiadomosc}")
 
-        
     def przegladaj_film(self):
         film_sciezka, _ = QFileDialog.getOpenFileName(
             self.window,
@@ -320,16 +343,18 @@ class MyWindow:
             '',
             'Video Files (*.mp4 *.avi *.mov *.mkv *.wmv)'
         )
-        if film_sciezka: #wybrano juz film
-            #ile film ma klatek, jaka ma rozdzielczosc
+        if film_sciezka:  # wybrano juz film
+            # ile film ma klatek, jaka ma rozdzielczosc
             self.aktualizuj_info_klatek(film_sciezka)
             print(f'Film ({self.film.sciezka}, width: {self.film.szerokosc}, height: {self.film.wysokosc}, klatek: {self.film.liczba_klatek}, fps: {self.film.fps})')
             self.window.sciezkaFilmu.setText(film_sciezka)
             self.update_rozdzielczosc_combo()
-            self.window.wybierzLiczbeKlatek.setRange(0, self.film.liczba_klatek)
-            self.window.wybierzLiczbeKlatek.setValue(self.film.liczba_klatek)  #ustawi na maks
+            self.window.wybierzLiczbeKlatek.setRange(
+                0, self.film.liczba_klatek)
+            self.window.wybierzLiczbeKlatek.setValue(
+                self.film.liczba_klatek)  # ustawi na maks
 
-    #zapisuje do atrybutu self.film typu klasy FilmInfo informacje z podanej sciezki
+    # zapisuje do atrybutu self.film typu klasy FilmInfo informacje z podanej sciezki
     def aktualizuj_info_klatek(self, sciezka):
         film = cv.VideoCapture(sciezka)
         if not film.isOpened():
@@ -346,21 +371,22 @@ class MyWindow:
 
         h, w = frame.shape[:2]
 
-        self.film = FilmInfo(sciezka, w, h, klatki, fps);
+        self.film = FilmInfo(sciezka, w, h, klatki, fps)
         film.release()
-    
+
     def update_rozdzielczosc_combo(self):
-        if(self.film == None):
+        if (self.film == None):
             return
-        film_poziomy = True;
-        wymiar = (self.film.szerokosc, self.film.wysokosc) # i to moze byc pionowe/poziome
-        if(wymiar[0] < wymiar[1]):
-            film_poziomy = False;
+        film_poziomy = True
+        # i to moze byc pionowe/poziome
+        wymiar = (self.film.szerokosc, self.film.wysokosc)
+        if (wymiar[0] < wymiar[1]):
+            film_poziomy = False
         self.window.wyborRozdzielczosci.clear()
-        
+
         # OG rozdzielczość jako pierwsza pozycja
         self.window.wyborRozdzielczosci.addItem(
-            f"Oryginalna ({max(wymiar)}x{min(wymiar)})", 
+            f"Oryginalna ({max(wymiar)}x{min(wymiar)})",
             wymiar
         )
         # Dodawania rozdzielczosci <= od oryginalnej
@@ -376,8 +402,8 @@ class MyWindow:
     def ekstrakcja_zawies(self):
         self.window.startEkstrakcji.setEnabled(False)
         self.window.wyszukiwanie.setEnabled(False)
-        #self.window.ekstrakcjaProgres.setVisible(True)
-        
+        # self.window.ekstrakcjaProgres.setVisible(True)
+
     def ekstrakcja_odwies(self):
         self.window.startEkstrakcji.setEnabled(True)
         self.window.wyszukiwanie.setEnabled(True)
@@ -386,21 +412,27 @@ class MyWindow:
     def ekstrakcja_sukces(self, liczba_klatek):
         self.ekstrakcja_odwies()
         # self.aktualizuj_liczbe_zdjec() nie mam zielonego pojecia jak to sie tutaj znalazlo ani co to za metoda
-        QMessageBox.information(self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
-        self.window.rekonstrukcjaLabel2.setText(f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
-        logging.info(f"Zakończono ekstrakcję klatek z filmu {Path(self.film.sciezka).name} ({liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
+        QMessageBox.information(
+            self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
+        self.window.rekonstrukcjaLabel2.setText(
+            f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
+        logging.info(
+            f"Zakończono ekstrakcję klatek z filmu {Path(self.film.sciezka).name} ({liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
 
     def ekstrakcja_blad(self, komunikat_bledu):
-        self.ekstrakcja_odwies();
-        QMessageBox.critical(self.window, 'Błąd', f'Wystąpił błąd: {komunikat_bledu}')
-                
+        self.ekstrakcja_odwies()
+        QMessageBox.critical(self.window, 'Błąd',
+                             f'Wystąpił błąd: {komunikat_bledu}')
+
     def start_extract(self):
-        #walidacja
-        if(self.film == None):
-            QMessageBox.warning(self.window, 'Błąd', 'Proszę wybrać plik wideo!')
+        # walidacja
+        if (self.film == None):
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Proszę wybrać plik wideo!')
             return
         if not os.path.exists(self.film.sciezka):
-            QMessageBox.warning(self.window, 'Błąd', 'Wybrany plik nie istnieje!')
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Wybrany plik nie istnieje!')
             return
 
         docelowa_liczba_klatek = self.window.wybierzLiczbeKlatek.value()
@@ -408,42 +440,48 @@ class MyWindow:
             if docelowa_liczba_klatek <= 0:
                 raise ValueError("Liczba klatek musi być dodatnia")
         except ValueError:
-            QMessageBox.warning(self.window, 'Błąd', 'Proszę wprowadzić poprawną liczbę klatek!')
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Proszę wprowadzić poprawną liczbę klatek!')
             return
 
         docelowa_rozdzielczosc = self.window.wyborRozdzielczosci.currentData()
 
-        #zawiesi UI zeby nie wywolal uzytkownik pare razy
+        # zawiesi UI zeby nie wywolal uzytkownik pare razy
         self.window.startEkstrakcji.setEnabled(False)
         self.window.wyszukiwanie.setEnabled(False)
         self.window.ekstrakcjaProgres.setVisible(True)
-        logging.info(f"Start ekstrakcji klatek z filmu {Path(self.film.sciezka).name} ({docelowa_liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
+        logging.info(
+            f"Start ekstrakcji klatek z filmu {Path(self.film.sciezka).name} ({docelowa_liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
 
-        #nowy wontek
+        # nowy wontek
         self.window.extraction_thread = ExtractionThread(
-            self.film, 
-            docelowa_liczba_klatek, 
+            self.film,
+            docelowa_liczba_klatek,
             docelowa_rozdzielczosc
         )
         self.window.extraction_thread.koniec.connect(self.ekstrakcja_sukces)
         self.window.extraction_thread.err.connect(self.ekstrakcja_blad)
         self.window.extraction_thread.log_signal.connect(self.log)
-        self.window.extraction_thread.progres.connect(self.window.ekstrakcjaProgres.setValue)
+        self.window.extraction_thread.progres.connect(
+            self.window.ekstrakcjaProgres.setValue)
         self.window.extraction_thread.start()
 
     def colmap_sukces(self, nazwa_modelu):
         self.window.startRekonstrukcji.setEnabled(True)
-        QMessageBox.information(self.window, 'Sukces', f'Rekonstrukcja zakończona! Model zapisano jako {nazwa_modelu}')
+        QMessageBox.information(
+            self.window, 'Sukces', f'Rekonstrukcja zakończona! Model zapisano jako {nazwa_modelu}')
 
     def colmap_blad(self, komunikat_bledu):
         self.window.startRekonstrukcji.setEnabled(True)
-        QMessageBox.critical(self.window, 'Błąd', f'Wystąpił błąd podczas rekonstrukcji: {komunikat_bledu}')
-        
+        QMessageBox.critical(
+            self.window, 'Błąd', f'Wystąpił błąd podczas rekonstrukcji: {komunikat_bledu}')
+
     def start_colmap(self):
         nazwa_modelu = self.window.nazwaModelu.text().strip()
         opcje = self.window.wyborOpcji.currentData()
         if not nazwa_modelu:
-            QMessageBox.warning(self.window, 'Błąd', 'Proszę podać nazwę modelu 3D!')
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Proszę podać nazwę modelu 3D!')
             return
 
         if not nazwa_modelu.endswith('.ply'):
@@ -453,14 +491,16 @@ class MyWindow:
         print("nazwa:", nazwa_modelu)
         # Trzeba sprawdzic czy sa zdjecia
         if not os.path.exists(sciezka_zdjecia) or not os.listdir(sciezka_zdjecia):
-            QMessageBox.warning(self.window, 'Błąd', 'Brak zdjęć! Najpierw wykonaj ekstrakcję.')
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Brak zdjęć! Najpierw wykonaj ekstrakcję.')
             return
 
         # Wyłączenie GUI na czas rekonstrukcji
         self.window.startRekonstrukcji.setEnabled(False)
 
         # colmap.py w osobnym wątku
-        self.colmap_thread = ColmapThread(nazwa_modelu, self.window.wybierzLiczbeWatkow.value(), opcje, self.window.wymusRekonstrukcje.isChecked())
+        self.colmap_thread = ColmapThread(nazwa_modelu, self.window.wybierzLiczbeWatkow.value(
+        ), opcje, self.window.wymusRekonstrukcje.isChecked(), self.window.matchowanieCheckBox.isChecked())
         self.colmap_thread.koniec.connect(self.colmap_sukces)
         self.colmap_thread.err.connect(self.colmap_blad)
         self.colmap_thread.log_signal.connect(self.log)
@@ -468,17 +508,20 @@ class MyWindow:
 
     def mesh_sukces(self, nazwa_modelu):
         self.window.startMeshowania.setEnabled(True)
-        QMessageBox.information(self.window, 'Sukces', f'Siatka stworzona! Model zapisano jako {nazwa_modelu}')
+        QMessageBox.information(
+            self.window, 'Sukces', f'Siatka stworzona! Model zapisano jako {nazwa_modelu}')
 
     def mesh_blad(self, komunikat_bledu):
         self.window.startMeshowania.setEnabled(True)
-        QMessageBox.critical(self.window, 'Błąd', f'Wystąpił błąd podczas tworzenia siatki: {komunikat_bledu}')
-        
+        QMessageBox.critical(
+            self.window, 'Błąd', f'Wystąpił błąd podczas tworzenia siatki: {komunikat_bledu}')
+
     def start_mesh(self):
         nazwa_modelu = self.window.nazwaModelu.text().strip()
         metoda = self.window.metodaWybor.currentData()
         if not nazwa_modelu:
-            QMessageBox.warning(self.window, 'Błąd', 'Proszę podać nazwę modelu 3D!')
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Proszę podać nazwę modelu 3D!')
             return
 
         print("opcje:", metoda)
@@ -487,7 +530,8 @@ class MyWindow:
             nazwa_modelu += '.ply'
         # Trzeba sprawdzic czy jest ten plik
         if not os.path.exists("./chmury/"+nazwa_modelu):
-            QMessageBox.warning(self.window, 'Błąd', 'Wybrany model nie istnieje!.')
+            QMessageBox.warning(self.window, 'Błąd',
+                                'Wybrany model nie istnieje!.')
             return
 
         # Wyłączenie GUI na czas rekonstrukcji
@@ -499,6 +543,7 @@ class MyWindow:
         self.mesh_thread.err.connect(self.mesh_blad)
         self.mesh_thread.log_signal.connect(self.log)
         self.mesh_thread.start()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

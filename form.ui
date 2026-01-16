@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1076</width>
-    <height>528</height>
+    <height>581</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -199,19 +199,6 @@
              <string>Rekonstrukcja</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_2">
-             <item row="2" column="0">
-              <widget class="QLabel" name="rekonstrukcjaLabel3">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Wybierz poziom dokładności</string>
-               </property>
-              </widget>
-             </item>
              <item row="0" column="0">
               <widget class="QGroupBox" name="groupBox">
                <property name="sizePolicy">
@@ -253,7 +240,50 @@
                </layout>
               </widget>
              </item>
-             <item row="4" column="0">
+             <item row="3" column="0">
+              <widget class="QComboBox" name="wyborOpcji">
+               <property name="editable">
+                <bool>false</bool>
+               </property>
+               <property name="labelDrawingMode">
+                <enum>QComboBox::LabelDrawingMode::UseStyle</enum>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Najlepsza jakość</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Połączenie obu światów</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Największa wydajność</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Własne ustawienia</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="rekonstrukcjaLabel3">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Wybierz poziom dokładności</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
               <layout class="QVBoxLayout" name="verticalLayout_3">
                <item>
                 <widget class="QLabel" name="label_15">
@@ -264,6 +294,13 @@
                </item>
                <item>
                 <widget class="QSpinBox" name="wybierzLiczbeWatkow"/>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="matchowanieCheckBox">
+                 <property name="text">
+                  <string>Użyj matchowania sekwencyjnego</string>
+                 </property>
+                </widget>
                </item>
                <item>
                 <widget class="QCheckBox" name="wymusRekonstrukcje">
@@ -300,36 +337,6 @@
                 </widget>
                </item>
               </layout>
-             </item>
-             <item row="3" column="0">
-              <widget class="QComboBox" name="wyborOpcji">
-               <property name="editable">
-                <bool>false</bool>
-               </property>
-               <property name="labelDrawingMode">
-                <enum>QComboBox::LabelDrawingMode::UseStyle</enum>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Najlepsza jakość</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Połączenie obu światów</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Największa wydajność</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Własne ustawienia</string>
-                </property>
-               </item>
-              </widget>
              </item>
             </layout>
            </widget>
