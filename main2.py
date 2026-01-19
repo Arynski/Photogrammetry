@@ -4,6 +4,7 @@ import time
 import os
 import subprocess
 import glob
+import re
 from PySide6.QtWidgets import QApplication, QFileDialog
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile
@@ -244,10 +245,11 @@ class MyWindow:
         # timer rekonstrukcji
         self.start_time = None
 
+        fotki = len(os.listdir(sciezka_zdjecia))
         # ustawienie pewnych rzeczy
         self.window.rekonstrukcjaStatusLabel.setHidden(True)
         self.window.rekonstrukcjaLabel2.setText(
-            f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
+            f'{fotki} zdjęć')
         self.window.wyborOpcji.clear()
         self.window.wyborOpcji.addItem("Największa wydajność", 0)
         self.window.wyborOpcji.addItem("Najlepsza jakość", 2)
@@ -273,6 +275,10 @@ class MyWindow:
             (1280, 720, "720p (1280x720)"),
             (854, 480, "480p (854x480)")
         ]
+        self.frame_count = fotki
+        self.feature_count = []
+        self.window.rekonstrukcjaAvgFeatureLabel.setHidden(True)
+        self.window.rekonstrukcjaPointsCount.setHidden(True)
 
         # Podłączenie przycisków
         self.window.wyszukiwanie.clicked.connect(self.przegladaj_film)
@@ -289,8 +295,20 @@ class MyWindow:
         self.window.logWindow.verticalScrollBar().setValue(
             self.window.logWindow.verticalScrollBar().maximum()
         )
+        pattern = r'Features:\s+(\d+)\s+\(SIFT\)'
         # Logika wyświetlania statusu rekonstrukcji
-        if ("Feature extraction" in message):
+        if ("Features: " in message and "(SIFT)" in message):
+            matche = re.findall(pattern, message)
+            features = [int(x) for x in matche]
+            self.feature_count.extend(features)
+            self.window.rekonstrukcjaAvgFeatureLabel.setHidden(False)
+            if (len(self.feature_count) < int(self.frame_count)):
+                self.window.rekonstrukcjaAvgFeatureLabel.setText(
+                    f"Średnia liczba cech: {round(sum(self.feature_count) / len(self.feature_count))} ({round(100 * len(self.feature_count) / self.frame_count)}% zdjęć)")
+            else:
+                self.window.rekonstrukcjaAvgFeatureLabel.setText(
+                    f"Średnia liczba cech: {round(sum(self.feature_count) / len(self.feature_count))}")
+        elif ("Feature extraction" in message):
             self.start_time = time.time()
             self.window.rekonstrukcjaStatusLabel.setHidden(False)
             self.window.rekonstrukcjaStatusLabel.setText(
@@ -411,11 +429,12 @@ class MyWindow:
 
     def ekstrakcja_sukces(self, liczba_klatek):
         self.ekstrakcja_odwies()
+        fotki = len(os.listdir(sciezka_zdjecia))
         # self.aktualizuj_liczbe_zdjec() nie mam zielonego pojecia jak to sie tutaj znalazlo ani co to za metoda
         QMessageBox.information(
             self.window, 'Sukces', f'Pomyślnie zapisano {liczba_klatek} klatek w folderze ./work/zdjecia/')
         self.window.rekonstrukcjaLabel2.setText(
-            f'{len(os.listdir(sciezka_zdjecia))} zdjęć')
+            f'{fotki} zdjęć')
         logging.info(
             f"Zakończono ekstrakcję klatek z filmu {Path(self.film.sciezka).name} ({liczba_klatek}) [{self.window.wyborRozdzielczosci.currentData()[0]}x{self.window.wyborRozdzielczosci.currentData()[1]}]")
 

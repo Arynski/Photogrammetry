@@ -211,7 +211,7 @@
                 <string>Informacje o modelu</string>
                </property>
                <layout class="QGridLayout" name="gridLayout_6">
-                <item row="1" column="0">
+                <item row="0" column="0">
                  <widget class="QLabel" name="rekonstrukcjaLabel2">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
@@ -224,16 +224,17 @@
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="rekonstrukcjaLabel1">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="rekonstrukcjaAvgFeatureLabel">
                   <property name="text">
-                   <string>W katalogu roboczym jest:</string>
+                   <string>TextLabel</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="rekonstrukcjaPointsCount">
+                  <property name="text">
+                   <string>TextLabel</string>
                   </property>
                  </widget>
                 </item>

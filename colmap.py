@@ -197,7 +197,7 @@ def colmap():
                 "--FeatureMatching.use_gpu", f"{uzywacGPU}",
                 "--FeatureMatching.num_threads", f"{n_watkow}",
                 "--FeatureMatching.guided_matching",  "1",
-                "--FeatureMatching.max_num_matches", "16384"
+                "--FeatureMatching.max_num_matches", "8192"
             ], check=True)
         else:
             pycolmap.match_sequential(
@@ -212,12 +212,12 @@ def colmap():
         if (testProcesow):
             subprocess.run([
                 "colmap",
-                "sequential_matcher",
+                "vocab_tree_matcher",
                 "--database_path", f"{local_dir_output / "bazunia.db"}",
                 "--FeatureMatching.use_gpu", f"{uzywacGPU}",
                 "--FeatureMatching.num_threads", f"{n_watkow}",
                 "--FeatureMatching.guided_matching",  "1",
-                "--FeatureMatching.max_num_matches", "16384",
+                "--FeatureMatching.max_num_matches", "8192",
                 "--VocabTreeMatching.num_checks",  f"{num_checks}",
                 "--VocabTreeMatching.num_threads", f"{n_watkow}"
             ], check=True)
@@ -583,7 +583,7 @@ if uzywacCMVS:
             # Użyj połączonego modelu jako wynik
             stara_nazwa = "combined.ply"
         else:
-            stara_nazwa = option_file + ".ply"
+            stara_nazwa = "option_0000.ply"
     else:
         stara_nazwa = option_file + ".ply"
 else:
