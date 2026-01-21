@@ -41,7 +41,7 @@ n_watkow = 8  # Ile wątków
 uzywacGPU = False  # Czy robic z GPU
 zlozonosc = 0
 uzywacSekwencyjnego = False
-testProcesow = True  # Używać procesów colmap (1) czy pycolmap (0)
+testProcesow = False  # Używać procesów colmap (1) czy pycolmap (0)
 
 # konfiguracja pliku do logowania
 logging.basicConfig(
@@ -263,9 +263,6 @@ def colmap():
                 output_path=output_dir,
                 options=pycolmap.IncrementalPipelineOptions(
                     num_threads=n_watkow,
-                    ba_refine_focal_length=False,
-                    ba_refine_principal_point=False,
-                    ba_refine_extra_params=False,
                     ba_global_max_num_iterations=configs["Options"][zlozonosc]['ba_global_max_num_iterations'],
                     ba_use_gpu=uzywacGPU
                 )

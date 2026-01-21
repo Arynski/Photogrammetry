@@ -296,6 +296,7 @@ class MyWindow:
             self.window.logWindow.verticalScrollBar().maximum()
         )
         pattern = r'Features:\s+(\d+)\s+\(SIFT\)'
+        pattern2 = r'Łącznie wierzchołków:\s+(\d+)'
         # Logika wyświetlania statusu rekonstrukcji
         if ("Features: " in message and "(SIFT)" in message):
             matche = re.findall(pattern, message)
@@ -353,6 +354,13 @@ class MyWindow:
 
             self.window.rekonstrukcjaStatusLabel.setText(
                 f"Status: Rekonstrukcja zakończona - upłynęło {wiadomosc}")
+
+        elif ("Łącznie wierzchołków" in message):
+            self.window.rekonstrukcjaPointsCount.setHidden(False)
+            matche = re.findall(pattern2, message)
+            features = [int(x) for x in matche]
+            self.window.rekonstrukcjaPointsCount.setText(
+                f"{max(features)} punktów w chmurze")
 
     def przegladaj_film(self):
         film_sciezka, _ = QFileDialog.getOpenFileName(
