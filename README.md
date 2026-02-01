@@ -24,7 +24,8 @@ Program przyjmuje flagi:
         okresla ilość wykorzystywanych wątków logicznych w programie -- ogolnie to nie powinno chyba byc wieksze niz prawdziwa ich ilosc, mozna zrobic ze -1 uzywa wszystkich dostepnych
 - **-l <0|1|2>**
         pozwala okreslic poziom zlozonosci, 0 to minimalna, szybka i najgorsza, 1 to średnia, 2 to najbardziej wymagająca (moze wyjsc zaszumione, ale to mozna zmienic w opcjach)
-
+- **-gpu <false|true>**
+	domyslne zachowanie to nieuzywanie GPU, podanie jakiekokolwiek argumentu innego od 0 skutkuje wykorzystaniem GPU
 ## Opcje
 Są w pliku **options.yaml** w katalogu work. Domyslnie są tam trzy, te ktore opisalem wyzej, ale potem moznaby zrobić że użytkowik z GUI może niektóre opcje ustawić sobie i np jako kolejny tam wpis. Informacje o opcjach pmvsa mam [stąd](https://www.di.ens.fr/pmvs/documentation.html).
 Z tego co sobie zanotowałem to ogolnie to sie zachowuje tak, że:
