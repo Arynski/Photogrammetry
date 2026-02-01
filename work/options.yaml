@@ -35,7 +35,7 @@ Options:
   maxAngle: 7
   csize: 1
   cmvs_images_per_cluster: 20
-- max_features: 8192
+- max_features: 2133
   num_nearest_neighbors: 5
   ba_global_max_num_iterations: 50
   level: 1
@@ -46,3 +46,4 @@ Options:
   maxAngle: 10
   csize: 2
   num_checks: 200
+  cmvs_images_per_cluster: 20

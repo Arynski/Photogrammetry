@@ -170,7 +170,7 @@ class ColmapThread(QThread):
         import subprocess
         try:
             cmd_args = ['python3', 'colmap.py', '-o', self.nazwa_modelu, '-nthreads',
-                        str(self.ile_watkow), '-l', str(self.opcje_poziom), '-gpu', str(self.czyGPU)]
+                        str(self.ile_watkow), '-l', str(self.opcje_poziom), '-gpu', str(int(self.czyGPU))]
             if (self.force is True):
                 print(f"Colmap działa w trybie wymuszonym")
                 cmd_args.append('-f')
@@ -179,6 +179,7 @@ class ColmapThread(QThread):
                 cmd_args.append('-seq')
 
             process = subprocess.Popen(
+                cmd_args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -596,7 +597,8 @@ class MyWindow:
                  "num_checks": self.window.numChecks.value(), "ba_global_max_num_iterations": self.window.baGlobal.value(),
                  "level": self.window.level.value(), "threshold": 0.7,
                  "useVisData": 1, "sequence": self.window.sequence.value(),
-                 "quad": self.window.quad.value(), "maxAngle": self.window.maxAngle.value(), "csize": self.window.csize.value()};
+                 "quad": self.window.quad.value(), "maxAngle": self.window.maxAngle.value(), "csize": self.window.csize.value(),
+                 "cmvs_images_per_cluster": 20};
 
         options[3].update(opcje)
 
